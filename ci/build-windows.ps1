@@ -34,6 +34,30 @@ if ($env:INCLUDE) {
     $env:BINDGEN_EXTRA_CLANG_ARGS = ($includes -join ' ')
 }
 
+# pkg-config 是 quercus-ffmpeg-link / ffmpeg-sys 解析 vcpkg .pc 的必需工具
+function Resolve-PkgConfig {
+    $candidates = @(
+        'C:\ProgramData\chocolatey\bin\pkg-config.exe',
+        'C:\msys64\usr\bin\pkg-config.exe',
+        'C:\Program Files\Git\usr\bin\pkg-config.exe'
+    )
+    foreach ($candidate in $candidates) {
+        if (Test-Path $candidate) { return $candidate }
+    }
+    $cmd = Get-Command pkg-config -ErrorAction SilentlyContinue
+    if ($cmd) { return $cmd.Source }
+    Write-Host '==> installing pkgconfiglite via chocolatey'
+    choco install pkgconfiglite -y --no-progress
+    foreach ($candidate in $candidates) {
+        if (Test-Path $candidate) { return $candidate }
+    }
+    throw 'pkg-config is not available'
+}
+$pkgConfig = Resolve-PkgConfig
+$env:PKG_CONFIG = $pkgConfig
+$env:PATH = "$(Split-Path $pkgConfig);$env:PATH"
+Write-Host "==> pkg-config: $pkgConfig"
+
 Write-Host "==> bootstrap cache: $env:QUERCUS_FFMPEG_CACHE"
 Write-Host '==> FFmpeg: vcpkg (x64-windows-static-md, built from source by quercus bootstrap)'
 Write-Host '==> OCIO: ocio-sys bundled (static CMake build)'
