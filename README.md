@@ -8,8 +8,11 @@
 
 | 平台 | 分发包（Release 资产） |
 |---|---|
-| Windows x86_64 | `video-studio-windows-x86_64.zip` |
-| Linux x86_64 | `video-studio-linux-x86_64.tar.gz` |
+| Windows x86_64 | `video-studio-windows-x86_64.zip`（83 MB） |
+| Linux x86_64 | `video-studio-linux-x86_64.tar.gz`（34 MB） |
+
+Release 里同时提供不含插件的纯 MCP 构建：`oak-mcp-windows-x86_64.zip`、
+`oak-mcp-linux-x86_64.tar.gz`（可接入 Claude Desktop / Cursor / VS Code 等任意 MCP 客户端）。
 
 > macOS 用户可从源码构建（见 `cross-build/README.md` 与上游 example-mcp 的 macOS 构建说明）。
 
