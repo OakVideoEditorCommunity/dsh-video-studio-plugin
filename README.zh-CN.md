@@ -111,9 +111,9 @@ mcp.json         可直接使用的 MCP 客户端配置
 ## 构建与发布（GitHub Actions）
 
 - 三个 job 分别在 `ubuntu-24.04`、`windows-latest`、`macos-15` 原生构建 `oak-mcp`：
-  三平台的 FFmpeg 9（静态）与 OpenColorIO（静态）都由 quercus bootstrap /
-  `ocio-sys` bundled 机制从源码构建（不用系统 FFmpeg、BtbN、conda 或 Homebrew OCIO）；
-  CI 会缓存构建前缀，重复构建很快；
+  Linux/Windows 使用固定版本的 BtbN FFmpeg 9.0.2 GPL shared 预编译包（`FFMPEG_DIR`），
+  macOS 用上游脚本从源码构建 FFmpeg 9；OpenColorIO 三平台都由 `ocio-sys` bundled
+  静态构建。CI 会缓存下载/构建的前缀。
 - 打 `v*` tag 触发构建 → GitHub Release + npm 发布，npm 发布走
   [Trusted Publishing](https://docs.npmjs.com/trusted-publishers)（GitHub Actions OIDC，
   `id-token: write`，不再需要 `NPM_TOKEN` secret）；npmjs.com 上需为 5 个
