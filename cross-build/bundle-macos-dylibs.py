@@ -23,6 +23,11 @@ EXTRA_LIB_DIRS = ("/opt/homebrew/lib", "/usr/local/lib")
 for _root in ("/opt/homebrew/opt", "/usr/local/opt"):
     if os.path.isdir(_root):
         EXTRA_LIB_DIRS += tuple(sorted(glob.glob(os.path.join(_root, "*", "lib"))))
+# Extra search roots come from the build environment (e.g. the bootstrap FFmpeg
+# prefix, whose static archives may reference dylibs inside the same prefix).
+EXTRA_SEARCH_ROOTS = [
+    part for part in os.environ.get("BUNDLE_EXTRA_SEARCH_DIRS", "").split(os.pathsep) if part
+]
 
 
 def run(*args):
@@ -119,7 +124,7 @@ def main():
                 if os.path.exists(candidate):
                     return os.path.realpath(candidate), False
             # Last resort: scan the Homebrew / local prefixes for the basename.
-            found = find_under(("/opt/homebrew", "/usr/local"), suffix)
+            found = find_under(tuple(EXTRA_SEARCH_ROOTS) + ("/opt/homebrew", "/usr/local"), suffix)
             if found:
                 return os.path.realpath(found), False
             return None, False
@@ -169,6 +174,12 @@ def main():
         print("error: unresolved @-prefixed dependencies:", file=sys.stderr)
         print("\n".join(unresolved), file=sys.stderr)
         print(f"debug: EXTRA_LIB_DIRS={EXTRA_LIB_DIRS!r}", file=sys.stderr)
+        print(f"debug: EXTRA_SEARCH_ROOTS={EXTRA_SEARCH_ROOTS!r}", file=sys.stderr)
+        for target in [out_bin] + [os.path.join(out_lib, b) for b in copy_source]:
+            print(f"debug: rpaths({os.path.basename(target)})={otool_rpaths(target)!r}", file=sys.stderr)
+            deps = [d for d in otool_deps(target) if d.startswith("@")]
+            if deps:
+                print(f"debug: at-deps({os.path.basename(target)})={deps!r}", file=sys.stderr)
         for dep in sorted({u.split(": ", 1)[1] for u in unresolved if ": " in u}):
             matches = []
             suffix = dep.split("/", 1)[1] if "/" in dep else dep

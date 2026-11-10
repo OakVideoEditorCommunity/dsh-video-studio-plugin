@@ -48,6 +48,7 @@ BIN="$TARGET_DIR/release/oak-mcp"
 [ -x "$BIN" ] || { echo "binary missing: $BIN" >&2; exit 1; }
 
 echo "==> bundle non-system dylibs (FFmpeg/OCIO static; may still pull zlib etc.)"
+export BUNDLE_EXTRA_SEARCH_DIRS="$QUERCUS_FFMPEG_CACHE"
 rm -rf "$OUT_DIR"
 python3 "$REPO_ROOT/cross-build/bundle-macos-dylibs.py" "$BIN" "$OUT_DIR"
 
