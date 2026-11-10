@@ -62,7 +62,7 @@ if [ -n "$LINUX_BIN" ]; then
 	rm -rf "$OUT"; mkdir -p "$OUT/bin" "$OUT/lib"
 	cp -a "$LINUX_BIN" "$OUT/bin/oak-mcp"; chmod +x "$OUT/bin/oak-mcp"
 	[ -n "$LINUX_LIBS" ] && [ -d "$LINUX_LIBS" ] && cp -a "$LINUX_LIBS/." "$OUT/lib/"
-	readme "$OUT/README.md" "Linux x86_64" "LD_LIBRARY_PATH=./lib ./bin/oak-mcp --check" "x86_64 Linux + glibc；运行库在 lib/，需 LD_LIBRARY_PATH=./lib。"
+	readme "$OUT/README.md" "Linux x86_64" "./bin/oak-mcp --check" "x86_64 Linux + glibc ≥ 2.39（Ubuntu 24.04 构建，现代发行版）；运行库在 lib/，二进制带 \$ORIGIN rpath。"
 	tar -czf "$DIST/oak-mcp-linux-x86_64.tar.gz" -C "$DIST" oak-mcp-linux-x86_64
 	echo "mcp package: $DIST/oak-mcp-linux-x86_64.tar.gz"
 fi

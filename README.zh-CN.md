@@ -123,13 +123,17 @@ mcp.json         可直接使用的 MCP 客户端配置
 
 ### 发布产物的硬件编解码
 
-- Linux：Quercus bootstrap 源码构建，依赖直接来自上游 `tooling/install-deps.sh`
-  （libva/libdrm/ffnvcodec 头文件）→ VAAPI + NVENC/NVDEC/CUDA；CI 用 `h264_vaapi`、
-  `h264_nvenc`、`hevc_nvenc` 字符串和 `libva.so` 动态链接做校验；
+- Linux：固定版本的 **BtbN FFmpeg 9.0.2 GPL shared** 构建（动态 `.so`，
+  autobuild 资产带 SHA256 校验）→ VAAPI、NVENC/NVDEC/CUDA、QSV、AMF；
+  CI 对 `libavcodec.so` 做 `h264_vaapi`/`h264_nvenc`/`hevc_nvenc`/`h264_qsv`/
+  `h264_amf` 校验；
 - Windows：固定版本的 **BtbN FFmpeg 9.0.2 GPL shared** 构建（动态 DLL + MSVC 导入库，
   autobuild 资产带 SHA256 校验）→ NVENC/NVDEC/CUDA、QSV（oneVPL）、AMF 以及
   D3D11VA/DXVA2/MediaFoundation；CI 对 `avcodec-*.dll` 做字符串校验；
 - macOS：VideoToolbox（H.264/HEVC），FFmpeg bootstrap 默认启用；CI 做字符串校验；
+- Linux 产物在 Ubuntu 24.04 上构建（glibc 2.39 基线），面向现代发行版
+  （Debian 13、Fedora 43、Arch 等）；`lib/` 内随附 libva/libdrm/libstdc++ 等运行库，
+  二进制带 `$ORIGIN` rpath，因此无需系统 FFmpeg/VA-API 开发包即可运行；
 - 注意：引擎**导出**时仍打开默认软件编码器（`libx264`），硬件路径加速的是解码/预览
   （以及经由外部 `ffmpeg` 的代理生成）；硬件编码导出需要改引擎。
 

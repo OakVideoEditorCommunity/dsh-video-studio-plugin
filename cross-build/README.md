@@ -37,6 +37,11 @@ cross-build/
   让这些系统库改回动态链接（FFmpeg prefix 内的 .a 仍是 static）。
 - `--check` 需要 Mesa 软件 Vulkan（apt `mesa-vulkan-drivers`），runner 上直接可跑。
 
+Linux 同样使用固定版本的 **BtbN FFmpeg 9.0.2 GPL shared**（动态 `.so`，
+autobuild + SHA256），在 Ubuntu 24.04 上编译（glibc 2.39 基线，面向 Debian 13 /
+Fedora 43 / Arch 等现代发行版）。产物带 `$ORIGIN` rpath，`lib/` 内随附
+libavcodec/libva/libdrm/libstdc++ 等运行库，不依赖目标机的 FFmpeg/VA-API 开发包。
+
 ### Windows x86_64（windows-latest，native MSVC）
 
 - FFmpeg 9 使用固定版本的 **BtbN FFmpeg 9.0.2 GPL shared** 预编译包

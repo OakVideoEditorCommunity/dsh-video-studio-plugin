@@ -125,14 +125,17 @@ mcp.json         ready-to-use MCP client configuration
 
 ### Hardware codecs in release binaries
 
-- Linux: Quercus bootstrap source build using the upstream `tooling/install-deps.sh`
-  (libva/libdrm/ffnvcodec headers) → VAAPI + NVENC/NVDEC/CUDA. CI asserts `h264_vaapi`,
-  `h264_nvenc`, `hevc_nvenc` and a `libva.so` link in the produced binary.
+- Linux: pinned **BtbN FFmpeg 9.0.2 GPL shared** build (dynamic `.so` files,
+  SHA256-pinned autobuild) → VAAPI, NVENC/NVDEC/CUDA, QSV and AMF. CI asserts
+  `h264_vaapi`/`h264_nvenc`/`hevc_nvenc`/`h264_qsv`/`h264_amf` in `libavcodec.so`.
 - Windows: pinned **BtbN FFmpeg 9.0.2 GPL shared** build (dynamic DLLs + MSVC import
   libraries, SHA256-pinned autobuild) → NVENC/NVDEC/CUDA, QSV (oneVPL), AMF and
   D3D11VA/DXVA2/MediaFoundation. CI asserts `h264_nvenc`/`hevc_nvenc`/`h264_qsv`/
   `h264_amf`/`h264_mf`/`d3d11va` in `avcodec-*.dll`.
 - macOS: VideoToolbox (H.264/HEVC), always enabled by the FFmpeg bootstrap; verified in CI.
+- Linux binaries are built on Ubuntu 24.04 (glibc 2.39 baseline) for modern distros
+  (Debian 13, Fedora 43, Arch, ...), bundle libva/libdrm/libstdc++/... in `lib/`, and
+  carry `$ORIGIN` rpath, so they run without system FFmpeg/VA-API dev packages.
 - Note: the engine still opens its default software encoder for **export** (`libx264`),
   so hardware paths speed up decoding/preview (and proxy generation via an external
   `ffmpeg`); hardware-encoded export needs an engine change.

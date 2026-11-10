@@ -32,23 +32,23 @@ jobs:
           repository: ${{ env.UPSTREAM_REPO }}
           ref: ${{ env.UPSTREAM_REF }}
           path: upstream-src
-      - name: Restore quercus FFmpeg bootstrap prefix
+      - name: Restore BtbN FFmpeg shared prefix
         uses: actions/cache/restore@v4
         with:
-          path: ${{ runner.temp }}/oak-build/quercus-ffmpeg/ffmpeg
-          key: quercus-ffmpeg-linux-x64-v2-hw
+          path: ${{ runner.temp }}/oak-build/btbn-ffmpeg-linux
+          key: btbn-ffmpeg-9.0.2-linux64-shared-v1
       - name: Build oak-mcp
         env:
           UPSTREAM_SRC: ${{ github.workspace }}/upstream-src
           WORK_ROOT: ${{ runner.temp }}/oak-build
           OUT_DIR: ${{ runner.temp }}/oak-build/out/linux-x64
         run: bash ci/build-linux.sh
-      - name: Save quercus FFmpeg bootstrap prefix
+      - name: Save BtbN FFmpeg shared prefix
         if: always()
         uses: actions/cache/save@v4
         with:
-          path: ${{ runner.temp }}/oak-build/quercus-ffmpeg/ffmpeg
-          key: quercus-ffmpeg-linux-x64-v2-hw
+          path: ${{ runner.temp }}/oak-build/btbn-ffmpeg-linux
+          key: btbn-ffmpeg-9.0.2-linux64-shared-v1
       - name: Upload binary
         uses: actions/upload-artifact@v4
         with:

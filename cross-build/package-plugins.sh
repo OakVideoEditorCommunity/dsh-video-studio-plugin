@@ -88,7 +88,7 @@ if [ -n "$LINUX_BIN" ]; then
 	cp -a "$TEMPLATES/install-linux.sh" "$OUT/install.sh"
 	cp -a "$TEMPLATES/uninstall-linux.sh" "$OUT/uninstall.sh"
 	chmod +x "$OUT/install.sh" "$OUT/uninstall.sh"
-	[ -n "$LINUX_DEPS" ] || LINUX_DEPS="\`oak-mcp\` 为 x86_64 Linux ELF（PIE），随附 \`mcp/lib/\` 运行库，安装后的启动脚本自动设置 \`LD_LIBRARY_PATH\`。最低要求：x86_64 Linux + glibc（构建机发行版或更新）。"
+	[ -n "$LINUX_DEPS" ] || LINUX_DEPS="\`oak-mcp\` 为 x86_64 Linux ELF（PIE），在 Ubuntu 24.04 上构建（glibc ≥ 2.39，现代发行版）；随附 \`mcp/lib/\` 运行库（libva/libstdc++ 等），二进制带 \`\$ORIGIN\` rpath，安装后的启动脚本另设 \`LD_LIBRARY_PATH\`。"
 	render_readme "$OUT/README.md" "Linux x86_64" "oak-mcp.bin" "mcp/lib/" ".sh" "bash" "./install.sh" "./uninstall.sh" "\$HOME/.local/share/video-studio" "\$HOME/.dsh/video-studio/previews" "$LINUX_DEPS"
 	tar -czf "$DIST/video-studio-linux-x86_64.tar.gz" -C "$DIST" video-studio-linux-x86_64
 	echo "linux package: $DIST/video-studio-linux-x86_64.tar.gz"
