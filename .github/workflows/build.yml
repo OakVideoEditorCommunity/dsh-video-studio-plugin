@@ -17,6 +17,8 @@ concurrency:
 
 env:
   UPSTREAM_REPO: OakVideoEditorCommunity/example-mcp
+  # Refresh this to the example-mcp commit that bumps quercus-engine-rs to
+  # 0.7.1 once Quercus 0.7.1 is published.
   UPSTREAM_REF: 9a58b3b57874659f9213b3e191e6be3df1726f92
 
 jobs:
@@ -32,23 +34,23 @@ jobs:
           repository: ${{ env.UPSTREAM_REPO }}
           ref: ${{ env.UPSTREAM_REF }}
           path: upstream-src
-      - name: Restore BtbN FFmpeg shared prefix
+      - name: Restore quercus FFmpeg bootstrap prefix
         uses: actions/cache/restore@v4
         with:
-          path: ${{ runner.temp }}/oak-build/btbn-ffmpeg-linux
-          key: btbn-ffmpeg-9.0.2-linux64-shared-v1
+          path: ${{ runner.temp }}/oak-build/quercus-ffmpeg/ffmpeg
+          key: quercus-ffmpeg-linux-x64-v4-selfbuilt
       - name: Build oak-mcp
         env:
           UPSTREAM_SRC: ${{ github.workspace }}/upstream-src
           WORK_ROOT: ${{ runner.temp }}/oak-build
           OUT_DIR: ${{ runner.temp }}/oak-build/out/linux-x64
         run: bash ci/build-linux.sh
-      - name: Save BtbN FFmpeg shared prefix
+      - name: Save quercus FFmpeg bootstrap prefix
         if: always()
         uses: actions/cache/save@v4
         with:
-          path: ${{ runner.temp }}/oak-build/btbn-ffmpeg-linux
-          key: btbn-ffmpeg-9.0.2-linux64-shared-v1
+          path: ${{ runner.temp }}/oak-build/quercus-ffmpeg/ffmpeg
+          key: quercus-ffmpeg-linux-x64-v4-selfbuilt
       - name: Upload binary
         uses: actions/upload-artifact@v4
         with:
@@ -72,24 +74,27 @@ jobs:
         uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x64
-      - name: Restore BtbN FFmpeg shared prefix
+      - name: Restore quercus vcpkg FFmpeg prefix
         uses: actions/cache/restore@v4
         with:
-          path: ${{ runner.temp }}/oak-build/btbn-ffmpeg
-          key: btbn-ffmpeg-9.0.2-win64-shared-v1
+          path: ${{ runner.temp }}/oak-build/quercus-ffmpeg/vcpkg/installed
+          key: quercus-ffmpeg-win64-vcpkg-v1
       - name: Build oak-mcp
         shell: pwsh
         env:
           UPSTREAM_SRC: ${{ github.workspace }}\upstream-src
           WORK_ROOT: ${{ runner.temp }}\oak-build
           OUT_DIR: ${{ runner.temp }}\oak-build\out\windows-x64
-        run: ./ci/build-windows.ps1
-      - name: Save BtbN FFmpeg shared prefix
+        run: |
+          $ffmpeg = ($env:FFMPEG_DIR -replace '\\','\\')
+          "FFMPEG_DIR=$env:FFMPEG_DIR" | Out-File -FilePath $env:GITHUB_ENV -Append
+          ./ci/build-windows.ps1
+      - name: Save quercus vcpkg FFmpeg prefix
         if: always()
         uses: actions/cache/save@v4
         with:
-          path: ${{ runner.temp }}/oak-build/btbn-ffmpeg
-          key: btbn-ffmpeg-9.0.2-win64-shared-v1
+          path: ${{ runner.temp }}/oak-build/quercus-ffmpeg/vcpkg/installed
+          key: quercus-ffmpeg-win64-vcpkg-v1
       - name: Upload binary
         uses: actions/upload-artifact@v4
         with:

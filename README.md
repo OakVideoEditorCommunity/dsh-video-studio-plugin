@@ -112,10 +112,10 @@ mcp.json         ready-to-use MCP client configuration
 
 ## Build & release (GitHub Actions)
 
-- Three jobs build `oak-mcp` natively on `ubuntu-24.04`, `windows-latest` and `macos-15`.
-  Linux/macOS build FFmpeg 9 + OpenColorIO from source (static, Quercus bootstrap /
-  `ocio-sys` bundled); Windows uses a pinned BtbN FFmpeg 9.0.2 GPL **shared** prebuilt
-  (dynamic DLLs) plus static bundled OpenColorIO. CI caches the built/downloaded prefixes.
+- Three jobs build `oak-mcp` natively on `ubuntu-24.04`, `windows-latest` and `macos-15`:
+  FFmpeg 9 (static) and OpenColorIO (static) are built from source on every platform by the
+  quercus bootstrap / `ocio-sys` bundled mechanism; no external FFmpeg/OCIO packages are used.
+  CI caches the built prefixes so repeat runs are fast.
 - Pushing a `v*` tag triggers build → GitHub Release + npm publish through
   [npm Trusted Publishing](https://docs.npmjs.com/trusted-publishers) (GitHub Actions OIDC,
   `id-token: write`; no `NPM_TOKEN` secret). Each of the five `@oakvideoeditor/*` packages
@@ -123,22 +123,19 @@ mcp.json         ready-to-use MCP client configuration
   `OakVideoEditorCommunity/dsh-video-studio-plugin`, workflow `build.yml`, environment empty.
 - `workflow_dispatch` only builds artifacts (no release/publish).
 
-### Hardware codecs in release binaries
+### Hardware codecs / runtime libraries
 
-- Linux: pinned **BtbN FFmpeg 9.0.2 GPL shared** build (dynamic `.so` files,
-  SHA256-pinned autobuild) → VAAPI, NVENC/NVDEC/CUDA, QSV and AMF. CI asserts
-  `h264_vaapi`/`h264_nvenc`/`hevc_nvenc`/`h264_qsv`/`h264_amf` in `libavcodec.so`.
-- Windows: pinned **BtbN FFmpeg 9.0.2 GPL shared** build (dynamic DLLs + MSVC import
-  libraries, SHA256-pinned autobuild) → NVENC/NVDEC/CUDA, QSV (oneVPL), AMF and
-  D3D11VA/DXVA2/MediaFoundation. CI asserts `h264_nvenc`/`hevc_nvenc`/`h264_qsv`/
-  `h264_amf`/`h264_mf`/`d3d11va` in `avcodec-*.dll`.
-- macOS: VideoToolbox (H.264/HEVC), always enabled by the FFmpeg bootstrap; verified in CI.
-- Linux binaries are built on Ubuntu 24.04 (glibc 2.39 baseline) for modern distros
-  (Debian 13, Fedora 43, Arch, ...), bundle libva/libdrm/libstdc++/... in `lib/`, and
-  carry `$ORIGIN` rpath, so they run without system FFmpeg/VA-API dev packages.
-- Note: the engine still opens its default software encoder for **export** (`libx264`),
-  so hardware paths speed up decoding/preview (and proxy generation via an external
-  `ffmpeg`); hardware-encoded export needs an engine change.
+- Linux: Quercus bootstrap builds FFmpeg 9 from source with the upstream
+  `tooling/install-deps.sh` set (libva/libdrm/ffnvcodec), so VAAPI and
+  NVENC/NVDEC/CUDA are compiled in; the binary bundles its non-glibc runtime
+  libraries in `lib/` and carries a `$ORIGIN` rpath (glibc 2.39 baseline,
+  targeting Debian 13 / Fedora 43 / Arch and newer).
+- Windows: Quercus bootstrap builds FFmpeg 9 from source via pinned vcpkg
+  (D3D11VA/DXVA2/MediaFoundation are on by default); NVENC/QSV/AMF depend on
+  upstream bootstrap support and will be refreshed with Quercus 0.7.1.
+- macOS: VideoToolbox (H.264/HEVC).
+- Note: the engine still opens its default software encoder for **export**
+  (`libx264`), so hardware paths accelerate decoding/preview.
 
 To reproduce locally see `cross-build/README.md` and the `ci/build-*.sh` scripts.
 

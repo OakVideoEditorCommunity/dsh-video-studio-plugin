@@ -111,9 +111,9 @@ mcp.json         可直接使用的 MCP 客户端配置
 ## 构建与发布（GitHub Actions）
 
 - 三个 job 分别在 `ubuntu-24.04`、`windows-latest`、`macos-15` 原生构建 `oak-mcp`：
-  Linux/macOS 由 quercus bootstrap / `ocio-sys` bundled 从源码静态构建 FFmpeg 9 与
-  OpenColorIO；Windows 使用固定版本的 BtbN FFmpeg 9.0.2 GPL **shared** 预编译包
-  （动态 DLL）+ 静态 bundled OpenColorIO。CI 会缓存构建/下载的前缀。
+  三平台的 FFmpeg 9（静态）与 OpenColorIO（静态）都由 quercus bootstrap /
+  `ocio-sys` bundled 机制从源码构建（不用系统 FFmpeg、BtbN、conda 或 Homebrew OCIO）；
+  CI 会缓存构建前缀，重复构建很快；
 - 打 `v*` tag 触发构建 → GitHub Release + npm 发布，npm 发布走
   [Trusted Publishing](https://docs.npmjs.com/trusted-publishers)（GitHub Actions OIDC，
   `id-token: write`，不再需要 `NPM_TOKEN` secret）；npmjs.com 上需为 5 个
@@ -121,21 +121,17 @@ mcp.json         可直接使用的 MCP 客户端配置
   `OakVideoEditorCommunity/dsh-video-studio-plugin`、workflow `build.yml`、环境留空；
 - `workflow_dispatch` 只构建产物、不发布。
 
-### 发布产物的硬件编解码
+### 硬件编解码 / 运行库
 
-- Linux：固定版本的 **BtbN FFmpeg 9.0.2 GPL shared** 构建（动态 `.so`，
-  autobuild 资产带 SHA256 校验）→ VAAPI、NVENC/NVDEC/CUDA、QSV、AMF；
-  CI 对 `libavcodec.so` 做 `h264_vaapi`/`h264_nvenc`/`hevc_nvenc`/`h264_qsv`/
-  `h264_amf` 校验；
-- Windows：固定版本的 **BtbN FFmpeg 9.0.2 GPL shared** 构建（动态 DLL + MSVC 导入库，
-  autobuild 资产带 SHA256 校验）→ NVENC/NVDEC/CUDA、QSV（oneVPL）、AMF 以及
-  D3D11VA/DXVA2/MediaFoundation；CI 对 `avcodec-*.dll` 做字符串校验；
-- macOS：VideoToolbox（H.264/HEVC），FFmpeg bootstrap 默认启用；CI 做字符串校验；
-- Linux 产物在 Ubuntu 24.04 上构建（glibc 2.39 基线），面向现代发行版
-  （Debian 13、Fedora 43、Arch 等）；`lib/` 内随附 libva/libdrm/libstdc++ 等运行库，
-  二进制带 `$ORIGIN` rpath，因此无需系统 FFmpeg/VA-API 开发包即可运行；
-- 注意：引擎**导出**时仍打开默认软件编码器（`libx264`），硬件路径加速的是解码/预览
-  （以及经由外部 `ffmpeg` 的代理生成）；硬件编码导出需要改引擎。
+- Linux：Quercus bootstrap 从源码构建 FFmpeg 9，依赖使用上游 `tooling/install-deps.sh`
+  的集合（libva/libdrm/ffnvcodec），因此编入 VAAPI 与 NVENC/NVDEC/CUDA；二进制把
+  非 glibc 运行库收进 `lib/` 并带 `$ORIGIN` rpath（glibc 2.39 基线，面向 Debian 13 /
+  Fedora 43 / Arch 及更新版本）。
+- Windows：Quercus bootstrap 通过固定版本 vcpkg 从源码构建 FFmpeg 9
+  （D3D11VA/DXVA2/MediaFoundation 默认开启）；NVENC/QSV/AMF 依赖上游 bootstrap 支持，
+  等 Quercus 0.7.1 后一并刷新。
+- macOS：VideoToolbox（H.264/HEVC）。
+- 注意：引擎**导出**仍使用默认软件编码器（`libx264`），硬件路径加速解码/预览。
 
 本地复现可参考 `cross-build/README.md` 与各 `ci/build-*.sh`。
 

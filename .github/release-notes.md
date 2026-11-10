@@ -9,14 +9,13 @@
 
 - npm 发布改用 **Trusted Publishing**（GitHub Actions OIDC，`id-token: write`），
   不再依赖 `NPM_TOKEN` secret，npm 包自动附带 provenance 证明；
-- 版本号升至 `0.1.1`，npm 发布包补充 `repository` 元数据；
-- Linux 产物面向现代发行版（Ubuntu 24.04 / glibc ≥ 2.39；Debian 13、Fedora 43、
-  Arch 等），带 `$ORIGIN` rpath 并随附 libva/libstdc++ 等运行库；
-- 发布产物带上硬件编解码支持：Linux 为 BtbN FFmpeg 9.0.2 shared
-  （VAAPI、NVENC/NVDEC/CUDA、QSV、AMF），Windows 为同一 BtbN 9.0.2 shared
-  （NVENC/NVDEC/CUDA、QSV、AMF、D3D11VA/DXVA2/MediaFoundation），
-  macOS 为 VideoToolbox；
-  硬件路径用于解码/预览，导出仍由引擎默认软件编码器（libx264）完成。
+- 版本号升至 `0.1.1`，npm 发布包补充 `repository` 元数据。
+
+## 构建说明
+
+Linux 使用 Quercus bootstrap 自行构建 FFmpeg 9（VAAPI/NVENC/NVDEC），Windows 使用
+固定版本 vcpkg 自行构建（D3D11VA/DXVA2/MediaFoundation），macOS 使用 VideoToolbox；
+Linux 产物带 `$ORIGIN` rpath 并随附运行库。导出编码仍由引擎默认软件编码器完成。
 
 ## 下载
 

@@ -11,7 +11,7 @@ DSH 插件 / npm 包 / GitHub Release 资产。
 ci/                          GitHub Actions 各平台构建脚本
   build-linux.sh              Linux：从源码构建 FFmpeg 9 + cargo build + 收集 .so
   patch-quercus-ffmpeg-link.py  Linux 非 PIC 静态系统库修复（见下）
-  build-windows.ps1           Windows：native MSVC + BtbN FFmpeg + conda OCIO
+  build-windows.ps1           Windows：native MSVC + vcpkg 静态 FFmpeg + bundled OCIO
   build-macos.sh              macOS：Homebrew FFmpeg/OCIO + dylib 打包
   patches/                    上游 crate 补丁
 cross-build/
@@ -35,18 +35,15 @@ cross-build/
   （bz2/lzma/z/stdc++/asound/pipewire…）强绑为 `static=`，导致链接 shared cdylib 时
   `R_X86_64_PC32 ... recompile with -fPIC`。`ci/patches/quercus-ffmpeg-link-linux-dynamic.patch`
   让这些系统库改回动态链接（FFmpeg prefix 内的 .a 仍是 static）。
-- `--check` 需要 Mesa 软件 Vulkan（apt `mesa-vulkan-drivers`），runner 上直接可跑。
-
-Linux 同样使用固定版本的 **BtbN FFmpeg 9.0.2 GPL shared**（动态 `.so`，
-autobuild + SHA256），在 Ubuntu 24.04 上编译（glibc 2.39 基线，面向 Debian 13 /
-Fedora 43 / Arch 等现代发行版）。产物带 `$ORIGIN` rpath，`lib/` 内随附
-libavcodec/libva/libdrm/libstdc++ 等运行库，不依赖目标机的 FFmpeg/VA-API 开发包。
+- 依赖集合来自上游 `tooling/install-deps.sh`（libva/libdrm/ffnvcodec），FFmpeg 因此编入
+  VAAPI、NVENC/NVDEC/CUDA；`--check` 需要 Mesa 软件 Vulkan（apt `mesa-vulkan-drivers`）。
+- 产物把非 glibc 运行库收进 `lib/`，二进制与每个库都带 `$ORIGIN` rpath；按 Ubuntu 24.04
+  （glibc 2.39）构建，面向 Debian 13 / Fedora 43 / Arch 等现代发行版。
 
 ### Windows x86_64（windows-latest，native MSVC）
 
-- FFmpeg 9 使用固定版本的 **BtbN FFmpeg 9.0.2 GPL shared** 预编译包
-  （autobuild 资产 + SHA256 校验）：headers、MSVC 导入库和 7 个 FFmpeg DLL，
-  动态链接；含 NVENC/NVDEC/CUDA、QSV、AMF、D3D11VA/DXVA2/MediaFoundation。
+- FFmpeg 9 由 `quercus-ffmpeg-bootstrap` 下载 pinned vcpkg 并用 `x64-windows-static-md`
+  从源码静态构建（上游 Windows CI 的方式；首次构建慢，CI 缓存 prefix）。
 - OpenColorIO 由 `ocio-sys` 的 `bundled` 特性从 vendored 源码用 CMake **静态构建**
   （与上游 Windows CI 一致；不需要 conda / 预编译 OCIO）。
 - `ilammy/msvc-dev-cmd` 设置 MSVC 环境；`BINDGEN_EXTRA_CLANG_ARGS` 从 `INCLUDE`
@@ -92,11 +89,6 @@ DSH 插件首次激活时由 Host 半把平台二进制复制到用户目录（W
 - `push tag v*` → 三平台构建 → GitHub Release（插件包 + 纯 MCP 包 + SHA256SUMS）
   → npm 发布（Trusted Publishing：GitHub Actions OIDC + `id-token: write`，无需 `NPM_TOKEN`）；
 - `workflow_dispatch` → 只构建并上传 artifacts，不发布。
-- 发布产物带硬件编解码：Linux 为 VAAPI/NVENC/NVDEC（依赖来自上游
-  `tooling/install-deps.sh`：libva/libdrm/ffnvcodec），Windows 为固定版本的
-  BtbN FFmpeg 9.0.2 GPL shared（NVENC/NVDEC/CUDA、QSV、AMF、
-  D3D11VA/DXVA2/MediaFoundation，DLL 与 exe 同目录），macOS 为 VideoToolbox；
-  Linux/macOS 的 FFmpeg 前缀缓存 key 随特性变更而升级，避免复用旧缓存。
 
 npmjs.com 上需为 5 个 `@oakvideoeditor/*` 包各配置一个 trusted publisher：
 仓库 `OakVideoEditorCommunity/dsh-video-studio-plugin`、workflow 文件名 `build.yml`、环境留空。

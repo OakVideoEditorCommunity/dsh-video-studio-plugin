@@ -32,11 +32,6 @@ def main():
         print(f"error: {CRATE} not in cargo registry (run cargo fetch first)", file=sys.stderr)
         return 1
     print(f"patching {candidates[0]} in place")
-    build_rs = os.path.join(candidates[0], "build.rs")
-    with open(build_rs, encoding="utf-8") as fh:
-        if "static_system_lib_dir(lib)" not in fh.read():
-            print("already patched")
-            return 0
     patch_file = os.path.join(repo, "ci", "patches", "quercus-ffmpeg-link-linux-dynamic.patch")
     result = subprocess.run(["patch", "-p1", "-i", patch_file], cwd=candidates[0])
     if result.returncode != 0:
