@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 /**
- * Host half of the `@local/video-studio` bundle.
+ * Host half of the `@oakvideoeditor/oak-deepseek-plugin` bundle.
  *
  * Responsibilities:
  *  - Create the preview directory when missing.
@@ -16,6 +16,7 @@
 
 import fs from 'node:fs'
 import fsp from 'node:fs/promises'
+import { createRequire } from 'node:module'
 import os from 'node:os'
 import path from 'node:path'
 
@@ -37,6 +38,84 @@ const MIME_TYPES = {
 	'.jpg': 'image/jpeg',
 	'.jpeg': 'image/jpeg',
 	'.webp': 'image/webp',
+}
+
+/** npm platform binary packages published by CI (optionalDependencies). */
+const PLATFORM_PACKAGES = {
+	'darwin-arm64': '@oakvideoeditor/oak-mcp-darwin-arm64',
+	'linux-x64': '@oakvideoeditor/oak-mcp-linux-x64',
+	'win32-x64': '@oakvideoeditor/oak-mcp-win32-x64',
+}
+/** Version of the binary this plugin build expects (kept in sync by CI). */
+const PACKAGE_VERSION = '0.1.0'
+const requireFromHere = createRequire(import.meta.url)
+
+/** Directory the MCP command expression resolves to (shared with install scripts). */
+function mcpInstallDir() {
+	if (process.platform === 'win32') {
+		return path.join(process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local'), 'video-studio')
+	}
+	return path.join(os.homedir(), '.local', 'share', 'video-studio')
+}
+
+/**
+ * Provision the oak-mcp binary from the matching npm platform package
+ * (`optionalDependencies`) into {@link mcpInstallDir}, where the
+ * `@deepseek-ai/dsh-mcp-client` row starts it. A pre-installed binary from the
+ * GitHub release installer is left untouched. Runs synchronously once per
+ * version, before the MCP client row activates.
+ */
+function ensureMcpBinary(logger) {
+	const dir = mcpInstallDir()
+	const isWindows = process.platform === 'win32'
+	const exeName = isWindows ? 'oak-mcp.exe' : 'oak-mcp'
+	const installedReal = path.join(dir, isWindows ? 'oak-mcp.exe' : 'oak-mcp.bin')
+	const stampPath = path.join(dir, '.version')
+	const stamp = fs.existsSync(stampPath) ? fs.readFileSync(stampPath, 'utf8').trim() : ''
+	if (fs.existsSync(installedReal) && stamp === PACKAGE_VERSION) return true
+
+	const packageName = PLATFORM_PACKAGES[`${process.platform}-${process.arch}`]
+	if (packageName === undefined) {
+		logger?.warn?.(`video-studio: no bundled oak-mcp for ${process.platform}-${process.arch}`)
+		return fs.existsSync(installedReal)
+	}
+	let packageDir
+	try {
+		packageDir = path.dirname(requireFromHere.resolve(`${packageName}/package.json`))
+	} catch {
+		if (fs.existsSync(installedReal)) return true
+		logger?.warn?.(`video-studio: platform package ${packageName} is not installed; set VIDEO_STUDIO_MCP_BIN`)
+		return false
+	}
+
+	fs.mkdirSync(dir, { recursive: true })
+	const sourceBin = path.join(packageDir, 'bin')
+	const sourceLib = path.join(packageDir, 'lib')
+	if (isWindows) {
+		for (const name of fs.readdirSync(sourceBin)) {
+			fs.copyFileSync(path.join(sourceBin, name), path.join(dir, name))
+		}
+	} else {
+		const target = path.join(dir, 'oak-mcp.bin')
+		fs.copyFileSync(path.join(sourceBin, 'oak-mcp'), target)
+		fs.chmodSync(target, 0o755)
+		fs.rmSync(path.join(dir, 'lib'), { recursive: true, force: true })
+		if (fs.existsSync(sourceLib)) fs.cpSync(sourceLib, path.join(dir, 'lib'), { recursive: true })
+		const wrapper = [
+			'#!/bin/sh',
+			'DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)',
+			'if [ -d "$DIR/lib" ]; then',
+			'  DYLD_LIBRARY_PATH="$DIR/lib${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"; export DYLD_LIBRARY_PATH',
+			'  LD_LIBRARY_PATH="$DIR/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"; export LD_LIBRARY_PATH',
+			'fi',
+			'exec "$DIR/oak-mcp.bin" "$@"',
+			'',
+		].join('\n')
+		fs.writeFileSync(path.join(dir, 'oak-mcp'), wrapper, { mode: 0o755 })
+	}
+	fs.writeFileSync(stampPath, `${PACKAGE_VERSION}\n`)
+	logger?.info?.(`video-studio: installed oak-mcp ${PACKAGE_VERSION} from ${packageName}`)
+	return true
 }
 
 /** Model-facing instructions; embeds the concrete preview directory. */
@@ -216,6 +295,12 @@ function serveMedia(dir, req, res) {
 
 /** @param {import('cordis').Context} ctx @param {{ previewDir?: string }} config */
 export function apply(ctx, config = {}) {
+	try {
+		ensureMcpBinary(ctx.logger)
+	} catch (error) {
+		ctx.logger?.warn?.(`video-studio: oak-mcp provisioning failed: ${error?.message ?? error}`)
+	}
+
 	const previewDir = path.resolve(
 		config.previewDir ??
 			path.join(os.homedir(), '.dsh', 'video-studio', 'previews'),

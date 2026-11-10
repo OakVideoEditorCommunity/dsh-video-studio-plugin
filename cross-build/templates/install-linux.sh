@@ -22,6 +22,8 @@ DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 if [ -d "$DIR/lib" ]; then
   LD_LIBRARY_PATH="$DIR/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
   export LD_LIBRARY_PATH
+  DYLD_LIBRARY_PATH="$DIR/lib${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
+  export DYLD_LIBRARY_PATH
 fi
 exec "$DIR/oak-mcp.bin" "$@"
 WRAPPER

@@ -1,148 +1,110 @@
-# cross-build：oak-mcp 的 Windows / Linux x86_64 交叉构建与插件打包
+# cross-build：构建、打包与发布
 
-本目录记录如何从 macOS arm64 交叉构建 [example-mcp](https://atomgit.com/oak-and-quercus/example-mcp)
-（Quercus 引擎的 MCP 服务器 `oak-mcp`）的 **Windows x86_64** 与 **Linux x86_64** 版本，
-并把「MCP 二进制 + DSH 插件」打包成分发件。
+从 `example-mcp`（Quercus 引擎的 MCP 服务器 `oak-mcp`）构建三平台产物，并打包成
+DSH 插件 / npm 包 / GitHub Release 资产。
 
-## 产物一览
-
-| 平台 | 产物 | 说明 |
-|---|---|---|
-| Windows x86_64 | `dist/windows-x86_64/`、`dist/windows-x86_64/oak-mcp-windows-x86_64.zip` | `oak-mcp.exe`（PE32+）+ 26 个运行时 DLL；Wine 下 `--check` 与导出验证通过 |
-| Linux x86_64 | `dist/linux-x86_64/`、`dist/linux-x86_64/video-studio-linux-x86_64.tar.gz` | `bin/oak-mcp`（68 MB，ELF PIE x86-64）+ 41 个随附 `.so`；Docker amd64 容器构建，干净 ubuntu:24.04 复测通过 |
-| DSH 插件分发包 | `dist/video-studio-windows-x86_64.zip`、`dist/video-studio-linux-x86_64.tar.gz` | 插件 bundle + MCP 二进制 + 安装脚本 |
-| macOS arm64（本机，已有） | `video-studio/bin/oak-mcp`、已安装的 `@local/video-studio` | 见 `video-studio-plugin/README.md` |
-
-> 目标架构是 **x86_64（64 位 x86）**；未构建 32 位 i686。
+支持的平台：**Windows x86_64、Linux x86_64、macOS arm64**。
 
 ## 目录
 
 ```
+ci/                          GitHub Actions 各平台构建脚本
+  build-linux.sh              Linux：从源码构建 FFmpeg 9 + cargo build + 收集 .so
+  build-ffmpeg9-linux.sh      FFmpeg 9 Linux 源码构建（CI 缓存）
+  patch-quercus-ffmpeg-link.py  Linux 非 PIC 静态系统库修复（见下）
+  build-windows.ps1           Windows：native MSVC + BtbN FFmpeg + conda OCIO
+  build-macos.sh              macOS：Homebrew FFmpeg/OCIO + dylib 打包
+  patches/                    上游 crate 补丁
 cross-build/
-  package-plugins.sh            # 生成 per-platform 插件分发包 + 压缩包
-  plugin-variants/{linux,windows}/cordis.patch.yml   # 平台版 MCP 启动路径（!!js 表达式）
-  templates/                    # 安装/卸载脚本与 README 模板
-dist/                           # 最终产物
-/Volumes/ExternalStorage/cross/{linux,windows}/   # 构建工作区（源代码、依赖、target、日志）
+  package-plugins.sh          生成三平台 DSH 插件分发包（zip/tar.gz）
+  package-mcp.sh              生成三平台纯 MCP 分发包
+  package-npm.sh              组装 npm 包（平台二进制包 + @oakvideoeditor/oak-mcp + 插件包）
+  bundle-macos-dylibs.py      macOS：拷贝 Homebrew dylib 并改写为 @executable_path
+  oak-mcp-launcher.mjs        npm 包内 oak-mcp 启动器（npx 用）
+  templates/                  安装/卸载脚本与 README 模板
+.github/workflows/build.yml  push tag（v*）→ 构建 + Release + npm 发布
 ```
 
-## Windows x86_64 构建（成功）
+## 各平台构建
 
-完整报告：`/Volumes/ExternalStorage/cross/windows/REPORT.md`，构建脚本 `.../build.sh`。
+### Linux x86_64（ubuntu-24.04 runner）
 
-要点：
+- 发行版没有 FFmpeg 9，`ci/build-ffmpeg9-linux.sh` 从源码构建到缓存前缀
+  （codec 依赖用发行版 `-dev`，16 个外部 codec/filter 全部启用）。
+- OCIO 由 `ocio-sys` 的 bundled 特性从 vendored 源码 CMake 构建。
+- 上游 `quercus-ffmpeg-link` 会在 Linux 上把 `/usr/lib` 下的**非 PIC** 静态库
+  （bz2/lzma/z/stdc++/asound/pipewire…）强绑为 `static=`，导致链接 shared cdylib 时
+  `R_X86_64_PC32 ... recompile with -fPIC`。`ci/patches/quercus-ffmpeg-link-linux-dynamic.patch`
+  让这些系统库改回动态链接（FFmpeg prefix 内的 .a 仍是 static）。
+- `--check` 需要 Mesa 软件 Vulkan（apt `mesa-vulkan-drivers`），runner 上直接可跑。
 
-- 目标 `x86_64-pc-windows-msvc`，用 **cargo-xwin**（下载 MSVC CRT + Windows SDK），
-  编译器 clang-cl / lld-link（Homebrew LLVM）。
-- **FFmpeg 9.0**：必须用 BtbN 的 `ffmpeg-n9.0-latest-win64-gpl-shared-9.0.zip`
-  （含 `include/`、`lib/*.lib` 导入库、`lib/pkgconfig/*.pc`、`bin/*.dll`）；
-  “gpl 静态包”只有 3 个 exe，没有开发文件。
-- **OpenColorIO 2.5.2**：conda-forge `win-64` 包（MSVC 动态库），用 micromamba 展开成
-  `ocio-prefix`，经 `OCIO_INSTALL_DIR` + `OpenColorIO.pc` 被 system-deps 探测，`OCIO_RS_LINK=dynamic`。
-- 三个必踩的坑及绕过（详见 REPORT）：
-  1. `ocio-sys` 的 build script 用 host `cfg!(target_os = "macos")` 泄漏 `-lc++` →
-     在 `/LIBPATH` 目录放一个占位 `c++.lib`（空 COFF 归档）；
-  2. `quercus-ffmpeg-sys` 的 bindgen 不传 `--target` → 用
-     `BINDGEN_EXTRA_CLANG_ARGS_x86_64_pc_windows_msvc="--target=x86_64-pc-windows-msvc ..."`；
-  3. `quercus-engine-rs` 的 `[target."cfg(not(windows))".build-dependencies]` 在交叉时按 host
-     评估，会去构建 macOS 静态 FFmpeg → 在构建副本里 patch 掉该 build-dep（上游未改）。
-- 验证：`file` → PE32+ x86-64；Wine 11.21 `--check`（ok、50 tools、render_manager）；
-  MCP 握手 + `tools/list`；端到端导出 3s H.264/AAC MP4（ffprobe 通过）。
-- 限制：未在真实 Windows 机器上运行；OCIO 动态链接；需要 Win10 1809+。
+### Windows x86_64（windows-latest，native MSVC）
 
-## Linux x86_64 构建（成功）
+- FFmpeg 9 用 BtbN `ffmpeg-n9.0-latest-win64-gpl-shared-9.0.zip`（含 `include/`、
+  `lib/*.lib` 导入库、`lib/pkgconfig`、`bin/*.dll`；不要用 static 包，它没有开发文件）。
+- OpenColorIO 2.5 用 conda-forge `win-64` 的 `libopencolorio` + `pkgconf` 现装；
+  脚本会自动生成 `OpenColorIO.pc` 与 `pkg-config.exe` shim。
+- `ilammy/msvc-dev-cmd` 设置 MSVC 环境；`BINDGEN_EXTRA_CLANG_ARGS` 从 `INCLUDE`
+  生成，保证 bindgen 按 Windows 头文件解析（否则 `AVIOContext` 布局错位）。
+- 运行库随 exe app-local：FFmpeg 7 个 DLL + OCIO/Imath/yaml-cpp/pystring/minizip/expat/
+  zlib/bz2/lzma/zstd + MSVC CRT。
 
-在 `docker run --platform linux/amd64` 的 Ubuntu 24.04 容器内**原生**构建
-（Apple Silicon 上通过 Rosetta 模拟，构建较慢）。完整报告：[linux-REPORT.md](linux-REPORT.md)。
+### macOS arm64（macos-14 runner）
 
-成果：
+- `brew install ffmpeg opencolorio`；`FFMPEG_DIR=$(brew --prefix ffmpeg)`、
+  `OCIO_INSTALL_DIR=$(brew --prefix opencolorio)`、`OCIO_RS_LINK=dynamic`。
+- `cross-build/bundle-macos-dylibs.py` 递归收集 Homebrew dylib 到 `lib/`，把 install name
+  改写为 `@executable_path/../lib` / `@loader_path`，并 ad-hoc 重签，产物不依赖本机 Homebrew。
 
-- `dist/linux-x86_64/bin/oak-mcp`：ELF 64-bit PIE x86-64，68,008,632 B，
-  sha256 `6c051c75b5ceec8bd724002205e64052cb28346402918f7e13c5e648ee9a98d9`；
-- `dist/linux-x86_64/lib/`：41 个非系统 `.so`（约 34 MB，`cp -L` 展开）；
-- 干净 `ubuntu:24.04` 容器（只补 Mesa/Vulkan/GL 运行库）：`ldd` 0 missing，`--check` exit 0；
-- 真实 MCP 导出：`project_new → media_import ×2 → clip_place_linked ×2 → preview_frame →
-  export_start → task_wait`，ffprobe 得到 H.264 1280×720 8.00 s + AAC。
+## 打包与发布
 
-要点：
-
-- Rust stable + **FFmpeg 9.0 从源码**构建到 `/opt/ffmpeg9`（发行版只有 FFmpeg 6/7），
-  codec 依赖用发行版 `-dev` 包；16 个外部 codec/filter 全部启用，无禁用。
-- OpenColorIO：发行版只有 2.1.3（低于 `ocio-sys` 要求的 2.4.1），不装系统 OCIO，
-  由 `ocio-sys` 的 `bundled` 特性从 vendored 源码 CMake 构建。
-- 构建镜像 `oak-linux-build:with-ffmpeg9` 保留在 Docker 中（可复现/快速重试）。
-- 过程中遭遇 NAS（`/Volumes/ExternalStorage`）掉线，改为内部盘 `/Users/sunyu/cross-linux`
-  从已 commit 的镜像续建。
-
-## 插件打包（package-plugins.sh）
+`package-plugins.sh`：
 
 ```bash
-./cross-build/package-plugins.sh \
-  --linux-binary dist/linux-x86_64/bin/oak-mcp \
-  --linux-libs   dist/linux-x86_64/lib \
-  --windows-binary dist/windows-x86_64/oak-mcp.exe \
-  --windows-dlls  dist/windows-x86_64
+bash cross-build/package-plugins.sh --plugin-src plugin --version 0.1.0 \
+  --linux-binary <bin>  --linux-libs <dir> \
+  --windows-binary <exe> --windows-dlls <dir> \
+  --macos-binary <bin>  --macos-libs <dir>
+# dist/video-studio-{linux-x86_64.tar.gz,windows-x86_64.zip,macos-arm64.tar.gz}
 ```
 
-产出：
+`package-mcp.sh` 生成纯 MCP 包 `oak-mcp-<platform>.{tar.gz,zip}`；
+`package-npm.sh` 组装 5 个 npm 包：
 
-- `dist/video-studio-linux-x86_64/` + `.tar.gz`
-- `dist/video-studio-windows-x86_64/` + `.zip`
+- `@oakvideoeditor/oak-mcp-darwin-arm64|linux-x64|win32-x64`（平台二进制）
+- `@oakvideoeditor/oak-mcp`（npx 启动器，`bin: oak-mcp`）
+- `@oakvideoeditor/oak-deepseek-plugin`（DSH 插件，`optionalDependencies` 引用平台二进制包）
 
-包结构（两平台相同）：
+DSH 插件首次激活时由 Host 半把平台二进制复制到用户目录（Windows
+`%LOCALAPPDATA%\video-studio`；Linux/macOS `~/.local/share/video-studio`），
+然后 `dsh-mcp-client` 行启动 MCP；也可用 `VIDEO_STUDIO_MCP_BIN` 覆盖。
 
-```
-video-studio-<platform>-x86_64/
-  README.md          # 平台说明（依赖、安装、使用、限制）
-  install.{sh,ps1}   # 复制二进制到平台约定目录 + dsh plugin add
-  uninstall.{sh,ps1}
-  plugin/            # @local/video-studio DSH bundle
-  mcp/               # oak-mcp 二进制 + 运行库
-```
+## GitHub Actions
 
-MCP 启动路径设计（避免写死绝对路径）：
+`.github/workflows/build.yml`：
 
-- bundle patch 用 Loader `!!js` 表达式：
-  - Linux：`process.env.VIDEO_STUDIO_MCP_BIN || (process.env.HOME + '/.local/share/video-studio/oak-mcp')`
-  - Windows：`process.env.VIDEO_STUDIO_MCP_BIN || ((process.env.LOCALAPPDATA || ...) + '/video-studio/oak-mcp.exe')`
-- 安装脚本把二进制放到上述约定目录；用户也可用 `VIDEO_STUDIO_MCP_BIN` 覆盖。
-- 预览目录不写死：插件默认 `~/.dsh/video-studio/previews`（Windows 为 `%USERPROFILE%\.dsh\...`），
-  系统提示会动态带上该绝对路径。
+- `push tag v*` → 三平台构建 → GitHub Release（插件包 + 纯 MCP 包 + SHA256SUMS）
+  → npm 发布（需仓库 secret `NPM_TOKEN`）；
+- `workflow_dispatch` → 只构建并上传 artifacts，不发布。
 
-安装（终端用户）：
+发布流程：本地把 tag 打到已通过 CI 的 commit 上，例如
 
 ```bash
-# Linux
-tar xzf video-studio-linux-x86_64.tar.gz && cd video-studio-linux-x86_64 && ./install.sh
-# Windows (PowerShell)
-Expand-Archive video-studio-windows-x86_64.zip . ; cd video-studio-windows-x86_64 ; powershell -ExecutionPolicy Bypass -File .\install.ps1
+git tag -a v0.1.0 -m "v0.1.0" && git push origin v0.1.0
 ```
 
-然后重启 DeepSeek Harness。需要 dsh CLI 在 PATH，或设置 `DSH_CLI`；profile 默认 `desktop`
-（可用 `DSH_PROFILE` 覆盖）。
+## 验证记录
 
-## 验证状态
-
-| 项 | Windows | Linux |
-|---|---|---|
-| 交叉/容器构建 | ✅ | ✅ |
-| `--check`（引擎/50 工具/渲染） | ✅ Wine 11.21 | ✅ 容器 + 干净容器 |
-| MCP stdio 握手 + tools/list | ✅ | ✅ |
-| 真实导出 + ffprobe | ✅ 3 s H.264+AAC | ✅ 8 s H.264+AAC |
-| 干净环境可运行性 | ✅ Wine | ✅ 干净 ubuntu:24.04（ldd 0 missing） |
-| DSH 插件分发包生成 | ✅ | ✅ |
-| 分发包在 DSH 中加载（用 macOS 二进制代跑） | ✅ | ✅ |
-| 真实 Windows/Linux GUI 联调 | ⚠️ 未做 | ⚠️ 未做 |
+- Linux：构建容器 + 干净 `ubuntu:24.04` 均 `--check` 通过（ldd 0 missing），
+  真实 MCP 导出（8s H.264+AAC）通过，见 [linux-REPORT.md](linux-REPORT.md)。
+- Windows：PE32+ x86-64；Wine 11.21 下 `--check`（ok / 50 tools / render_manager）、
+  MCP 握手、3s H.264+AAC 导出通过。
+- macOS arm64：dylib 打包后 `--check` 通过（从 `lib/` 加载，不依赖 Homebrew 路径）。
+- 插件分发包在干净 Linux 容器 / 临时 DSH profile 中安装加载验证通过。
 
 ## 上游修复建议
 
-这些是交叉构建时暴露的上游问题（可提给 example-mcp / quercus-engine / ocio-sys）：
-
-1. `ocio-sys` build.rs 应使用 `CARGO_CFG_TARGET_OS` 而不是 host 的 `cfg!(target_os)`；
-2. `quercus-engine-rs` 的 `cfg(not(windows))` build-dependency 在交叉时按 host 求值，
-   建议改成显式 target 条件；
-3. `quercus-ffmpeg-sys` 的 bindgen 应传 `--target`，否则 Windows 头会按 host LP64 解析
-   （`AVIOContext` 布局错位）；
-4. `quercus-ffmpeg-link` 在 Linux 上把 `/usr/lib` 下的非 PIC 静态系统库（bz2/lzma/z/stdc++/…）
-   强绑为 `static=`，链接 shared cdylib 时会报 `R_X86_64_PC32 ... recompile with -fPIC`；
-   交叉/发行构建需改为动态链接（本次通过 `[patch.crates-io]` 修正，见 linux-REPORT.md）。
+1. `ocio-sys` build.rs 用 host 的 `cfg!(target_os)` 判断，交叉构建时会泄漏 `-lc++`/`-lstdc++`；
+2. `quercus-engine-rs` 的 `cfg(not(windows))` build-dependency 在交叉时按 host 求值；
+3. `quercus-ffmpeg-sys` 的 bindgen 应显式传 `--target`；
+4. `quercus-ffmpeg-link` 在 Linux 强绑非 PIC 系统静态库（本仓库用 patch 规避）。

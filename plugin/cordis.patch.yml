@@ -1,12 +1,19 @@
-# video-studio bundle patch — 通用版（Windows / Linux / macOS）
+# video-studio bundle patch
+#
+# 行的顺序很重要：先加载本插件的 Host 半（见 index.js 的 ensureMcpBinary），
+# 它会从 optionalDependencies 的平台包（@oakvideoeditor/oak-mcp-*）把 oak-mcp
+# 安装到约定目录，然后 dsh-mcp-client 再启动 MCP 服务器。
 #
 # MCP 二进制位置（可用环境变量 VIDEO_STUDIO_MCP_BIN 覆盖）：
 #   Windows: %LOCALAPPDATA%\video-studio\oak-mcp.exe
 #   Linux/macOS: ~/.local/share/video-studio/oak-mcp
-# install.sh / install.ps1 会把 oak-mcp 放到上述目录。
+# 通过 GitHub Release 安装脚本安装时二进制已就位，ensureMcpBinary 会直接复用。
 # 预览目录不配置：插件默认使用 ~/.dsh/video-studio/previews。
 
 - insert:
+    - id: video-studio
+      name: '@oakvideoeditor/oak-deepseek-plugin'
+
     - id: video-studio-oak-mcp
       name: '@deepseek-ai/dsh-mcp-client'
       config:
@@ -15,6 +22,3 @@
         command: !!js "process.env.VIDEO_STUDIO_MCP_BIN || (process.platform === 'win32' ? ((process.env.LOCALAPPDATA || (process.env.USERPROFILE + '/AppData/Local')) + '/video-studio/oak-mcp.exe') : ((process.env.HOME || process.env.USERPROFILE) + '/.local/share/video-studio/oak-mcp'))"
         toolCallTimeoutMs: 180000
         failOnStartupError: false
-
-    - id: video-studio
-      name: '@local/video-studio'
