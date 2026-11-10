@@ -85,6 +85,25 @@ def main():
                 return base + rpath[len(token) :]
         return rpath
 
+    walk_cache = {}
+
+    def find_under(roots, suffix):
+        key = (tuple(roots), suffix)
+        if key in walk_cache:
+            return walk_cache[key]
+        result = None
+        for root in roots:
+            if not os.path.isdir(root):
+                continue
+            for current_dir, dirnames, filenames in os.walk(root, followlinks=True):
+                if suffix in filenames:
+                    result = os.path.join(current_dir, suffix)
+                    break
+            if result:
+                break
+        walk_cache[key] = result
+        return result
+
     def resolve_dep(dep, owner):
         """Return (resolved_abs_or_None, is_system)."""
         if is_system(dep):
@@ -99,6 +118,10 @@ def main():
                 candidate = os.path.join(lib_dir, suffix)
                 if os.path.exists(candidate):
                     return os.path.realpath(candidate), False
+            # Last resort: scan the Homebrew / local prefixes for the basename.
+            found = find_under(("/opt/homebrew", "/usr/local"), suffix)
+            if found:
+                return os.path.realpath(found), False
             return None, False
         if dep.startswith("@loader_path/"):
             candidate = os.path.join(os.path.dirname(owner), dep[len("@loader_path/") :])
@@ -145,6 +168,15 @@ def main():
     if unresolved:
         print("error: unresolved @-prefixed dependencies:", file=sys.stderr)
         print("\n".join(unresolved), file=sys.stderr)
+        print(f"debug: EXTRA_LIB_DIRS={EXTRA_LIB_DIRS!r}", file=sys.stderr)
+        for dep in sorted({u.split(": ", 1)[1] for u in unresolved if ": " in u}):
+            matches = []
+            suffix = dep.split("/", 1)[1] if "/" in dep else dep
+            for lib_dir in EXTRA_LIB_DIRS:
+                candidate = os.path.join(lib_dir, suffix)
+                if os.path.exists(candidate):
+                    matches.append(candidate)
+            print(f"debug: {dep} -> matches={matches!r}", file=sys.stderr)
         return 1
 
     for base, real in copy_source.items():
