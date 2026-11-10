@@ -47,10 +47,10 @@ cargo build --release --manifest-path "$BUILD_SRC/Cargo.toml"
 BIN="$TARGET_DIR/release/oak-mcp"
 [ -x "$BIN" ] || { echo "binary missing: $BIN" >&2; exit 1; }
 
-echo "==> --check"
-"$BIN" --check
-
-echo "==> bundle non-system dylibs (usually none: FFmpeg/OCIO are static)"
+echo "==> bundle non-system dylibs (FFmpeg/OCIO static; may still pull zlib etc.)"
 rm -rf "$OUT_DIR"
 python3 "$REPO_ROOT/cross-build/bundle-macos-dylibs.py" "$BIN" "$OUT_DIR"
+
+echo "==> --check (bundled binary, no Homebrew dependency)"
+"$OUT_DIR/bin/oak-mcp" --check
 echo "==> staged -> $OUT_DIR"

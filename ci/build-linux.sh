@@ -30,6 +30,7 @@ cp -a "$UPSTREAM_SRC" "$BUILD_SRC"
 export CARGO_TARGET_DIR="$TARGET_DIR"
 cargo fetch --manifest-path "$BUILD_SRC/Cargo.toml"
 python3 "$REPO_ROOT/ci/patch-quercus-ffmpeg-link.py" "$BUILD_SRC" "$WORK_ROOT" "$REPO_ROOT"
+python3 "$REPO_ROOT/ci/patch-quercus-engine-static.py"
 
 echo "==> cargo build (FFmpeg + OCIO built from source, static; first run is slow)"
 export WGPU_BACKEND="${WGPU_BACKEND:-vulkan}"
