@@ -39,8 +39,9 @@ cross-build/
 
 ### Windows x86_64（windows-latest，native MSVC）
 
-- FFmpeg 9 由 `quercus-ffmpeg-bootstrap` 下载 pinned vcpkg 并用 `x64-windows-static-md`
-  从源码静态构建（上游 Windows CI 的方式；首次构建慢，CI 缓存 prefix）。
+- FFmpeg 9 使用固定版本的 **BtbN FFmpeg 9.0.2 GPL shared** 预编译包
+  （autobuild 资产 + SHA256 校验）：headers、MSVC 导入库和 7 个 FFmpeg DLL，
+  动态链接；含 NVENC/NVDEC/CUDA、QSV、AMF、D3D11VA/DXVA2/MediaFoundation。
 - OpenColorIO 由 `ocio-sys` 的 `bundled` 特性从 vendored 源码用 CMake **静态构建**
   （与上游 Windows CI 一致；不需要 conda / 预编译 OCIO）。
 - `ilammy/msvc-dev-cmd` 设置 MSVC 环境；`BINDGEN_EXTRA_CLANG_ARGS` 从 `INCLUDE`
@@ -86,10 +87,11 @@ DSH 插件首次激活时由 Host 半把平台二进制复制到用户目录（W
 - `push tag v*` → 三平台构建 → GitHub Release（插件包 + 纯 MCP 包 + SHA256SUMS）
   → npm 发布（Trusted Publishing：GitHub Actions OIDC + `id-token: write`，无需 `NPM_TOKEN`）；
 - `workflow_dispatch` → 只构建并上传 artifacts，不发布。
-- 发布产物带硬件编解码：Linux 为 VAAPI/VDPAU/NVENC/NVDEC（`libva-dev`、
-  `libvdpau-dev`、`libdrm-dev`、`nv-codec-headers`），Windows 为
-  D3D11VA/DXVA2/MediaFoundation + NVENC/NVDEC（vcpkg `nvcodec`），macOS 为
-  VideoToolbox；FFmpeg 前缀缓存 key 随特性变更而升级，避免复用旧缓存。
+- 发布产物带硬件编解码：Linux 为 VAAPI/NVENC/NVDEC（依赖来自上游
+  `tooling/install-deps.sh`：libva/libdrm/ffnvcodec），Windows 为固定版本的
+  BtbN FFmpeg 9.0.2 GPL shared（NVENC/NVDEC/CUDA、QSV、AMF、
+  D3D11VA/DXVA2/MediaFoundation，DLL 与 exe 同目录），macOS 为 VideoToolbox；
+  Linux/macOS 的 FFmpeg 前缀缓存 key 随特性变更而升级，避免复用旧缓存。
 
 npmjs.com 上需为 5 个 `@oakvideoeditor/*` 包各配置一个 trusted publisher：
 仓库 `OakVideoEditorCommunity/dsh-video-studio-plugin`、workflow 文件名 `build.yml`、环境留空。

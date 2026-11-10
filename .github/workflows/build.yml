@@ -32,27 +32,6 @@ jobs:
           repository: ${{ env.UPSTREAM_REPO }}
           ref: ${{ env.UPSTREAM_REF }}
           path: upstream-src
-      - name: Install build dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            build-essential clang libclang-dev cmake ninja-build pkg-config pkgconf \
-            perl python3 curl ca-certificates git xz-utils bzip2 tar patch nasm yasm \
-            meson autoconf autoconf-archive automake libtool gperf zip unzip \
-            libnuma-dev zlib1g-dev \
-            libpipewire-0.3-dev libjack-jackd2-dev libasound2-dev libpulse-dev libsndfile1-dev \
-            libxkbcommon-dev libxkbcommon-x11-dev libudev-dev \
-            libgl-dev libglvnd-dev libgl1-mesa-dev libegl-dev \
-            libfontconfig1-dev libfreetype-dev \
-            libva-dev libva-drm2 libvdpau-dev libvdpau1 libdrm-dev \
-            libvulkan1 mesa-vulkan-drivers libgl1-mesa-dri libegl1 libgl1 libglx-mesa0 mesa-utils xvfb
-      - name: Install nv-codec-headers (ffnvcodec for NVENC/NVDEC/CUDA)
-        run: |
-          git clone --depth 1 --branch n13.0.19.0 \
-            https://github.com/FFmpeg/nv-codec-headers.git "$RUNNER_TEMP/nv-codec-headers"
-          sudo make -C "$RUNNER_TEMP/nv-codec-headers" install PREFIX=/usr/local
-          echo "PKG_CONFIG_PATH=/usr/local/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}" >> "$GITHUB_ENV"
-          pkg-config --modversion ffnvcodec
       - name: Restore quercus FFmpeg bootstrap prefix
         uses: actions/cache/restore@v4
         with:
@@ -93,27 +72,24 @@ jobs:
         uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x64
-      - name: Restore quercus vcpkg FFmpeg prefix
+      - name: Restore BtbN FFmpeg shared prefix
         uses: actions/cache/restore@v4
         with:
-          path: ${{ runner.temp }}/oak-build/quercus-ffmpeg/vcpkg/installed
-          key: quercus-ffmpeg-win64-vcpkg-v2-nvcodec
+          path: ${{ runner.temp }}/oak-build/btbn-ffmpeg
+          key: btbn-ffmpeg-9.0.2-win64-shared-v1
       - name: Build oak-mcp
         shell: pwsh
         env:
           UPSTREAM_SRC: ${{ github.workspace }}\upstream-src
           WORK_ROOT: ${{ runner.temp }}\oak-build
           OUT_DIR: ${{ runner.temp }}\oak-build\out\windows-x64
-        run: |
-          $ffmpeg = ($env:FFMPEG_DIR -replace '\\','\\')
-          "FFMPEG_DIR=$env:FFMPEG_DIR" | Out-File -FilePath $env:GITHUB_ENV -Append
-          ./ci/build-windows.ps1
-      - name: Save quercus vcpkg FFmpeg prefix
+        run: ./ci/build-windows.ps1
+      - name: Save BtbN FFmpeg shared prefix
         if: always()
         uses: actions/cache/save@v4
         with:
-          path: ${{ runner.temp }}/oak-build/quercus-ffmpeg/vcpkg/installed
-          key: quercus-ffmpeg-win64-vcpkg-v2-nvcodec
+          path: ${{ runner.temp }}/oak-build/btbn-ffmpeg
+          key: btbn-ffmpeg-9.0.2-win64-shared-v1
       - name: Upload binary
         uses: actions/upload-artifact@v4
         with:

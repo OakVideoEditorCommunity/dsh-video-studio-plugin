@@ -29,6 +29,17 @@ rm -rf "$BUILD_SRC"
 cp -a "$UPSTREAM_SRC" "$BUILD_SRC"
 export CARGO_TARGET_DIR="$TARGET_DIR"
 cargo fetch --manifest-path "$BUILD_SRC/Cargo.toml"
+
+# CI gets the toolchain/system libraries from Quercus itself, so the release
+# build and upstream CI share one dependency set (libva/libdrm/ffnvcodec...).
+# Local builds are untouched unless QUERCUS_INSTALL_DEPS=1 is set.
+if [ "${CI:-}" = "true" ] || [ "${QUERCUS_INSTALL_DEPS:-0}" = "1" ]; then
+	echo "==> install system dependencies (Quercus tooling/install-deps.sh)"
+	DEPS_SCRIPT=$(ls -d "${CARGO_HOME:-$HOME/.cargo}"/registry/src/*/quercus-ffmpeg-bootstrap-*/tooling/install-deps.sh 2>/dev/null | sort -V | tail -n 1)
+	[ -n "$DEPS_SCRIPT" ] || { echo "ERROR: quercus-ffmpeg-bootstrap tooling/install-deps.sh not found (run cargo fetch first)" >&2; exit 1; }
+	bash "$DEPS_SCRIPT"
+fi
+
 python3 "$REPO_ROOT/ci/patch-quercus-ffmpeg-link.py" "$BUILD_SRC" "$WORK_ROOT" "$REPO_ROOT"
 python3 "$REPO_ROOT/ci/patch-quercus-engine-static.py"
 
@@ -45,13 +56,12 @@ BIN="$TARGET_DIR/release/oak-mcp"
 echo "==> --check"
 "$BIN" --check
 
-echo "==> verify hardware codecs (VAAPI / VDPAU / NVENC / NVDEC)"
-for enc in h264_vaapi hevc_vaapi h264_nvenc hevc_nvenc h264_vdpau; do
+echo "==> verify hardware codecs (VAAPI / NVENC / NVDEC)"
+for enc in h264_vaapi hevc_vaapi h264_nvenc hevc_nvenc; do
 	grep -aq "$enc" "$BIN" || { echo "ERROR: $enc not compiled into $BIN" >&2; exit 1; }
 done
 ldd "$BIN" | grep -q "libva.so" || { echo "ERROR: libva not linked (VAAPI disabled)" >&2; exit 1; }
-ldd "$BIN" | grep -q "libvdpau.so" || { echo "ERROR: libvdpau not linked (VDPAU disabled)" >&2; exit 1; }
-echo "==> hardware codecs present: VAAPI, VDPAU, NVENC, NVDEC (CUDA/ffnvcodec)"
+echo "==> hardware codecs present: VAAPI, NVENC, NVDEC (CUDA/ffnvcodec)"
 
 echo "==> stage bin/ + running libraries"
 rm -rf "$OUT_DIR"

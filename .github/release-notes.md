@@ -10,8 +10,9 @@
 - npm 发布改用 **Trusted Publishing**（GitHub Actions OIDC，`id-token: write`），
   不再依赖 `NPM_TOKEN` secret，npm 包自动附带 provenance 证明；
 - 版本号升至 `0.1.1`，npm 发布包补充 `repository` 元数据；
-- 发布产物带上硬件编解码支持：Linux 为 VAAPI/VDPAU/NVENC/NVDEC（CUDA/ffnvcodec），
-  Windows 为 D3D11VA/DXVA2/MediaFoundation + NVENC/NVDEC，macOS 为 VideoToolbox；
+- 发布产物带上硬件编解码支持：Linux 为 VAAPI/NVENC/NVDEC（Quercus install-deps +
+  ffnvcodec），Windows 为 BtbN FFmpeg 9.0.2 shared（NVENC/NVDEC/CUDA、QSV、AMF、
+  D3D11VA/DXVA2/MediaFoundation），macOS 为 VideoToolbox；
   硬件路径用于解码/预览，导出仍由引擎默认软件编码器（libx264）完成。
 
 ## 下载

@@ -112,10 +112,10 @@ mcp.json         ready-to-use MCP client configuration
 
 ## Build & release (GitHub Actions)
 
-- Three jobs build `oak-mcp` natively on `ubuntu-24.04`, `windows-latest` and `macos-15`:
-  FFmpeg 9 (static) and OpenColorIO (static) are built from source on every platform by the
-  quercus bootstrap / `ocio-sys` bundled mechanism; no external FFmpeg/OCIO packages are used.
-  CI caches the built prefixes so repeat runs are fast.
+- Three jobs build `oak-mcp` natively on `ubuntu-24.04`, `windows-latest` and `macos-15`.
+  Linux/macOS build FFmpeg 9 + OpenColorIO from source (static, Quercus bootstrap /
+  `ocio-sys` bundled); Windows uses a pinned BtbN FFmpeg 9.0.2 GPL **shared** prebuilt
+  (dynamic DLLs) plus static bundled OpenColorIO. CI caches the built/downloaded prefixes.
 - Pushing a `v*` tag triggers build → GitHub Release + npm publish through
   [npm Trusted Publishing](https://docs.npmjs.com/trusted-publishers) (GitHub Actions OIDC,
   `id-token: write`; no `NPM_TOKEN` secret). Each of the five `@oakvideoeditor/*` packages
@@ -125,11 +125,13 @@ mcp.json         ready-to-use MCP client configuration
 
 ### Hardware codecs in release binaries
 
-- Linux: VAAPI + VDPAU + NVENC/NVDEC/CUDA (`libva-dev`, `libvdpau-dev`, `libdrm-dev`,
-  pinned `nv-codec-headers`); verified in CI by requiring `h264_vaapi`, `h264_nvenc`,
-  `h264_vdpau` and a `libva.so` link in the produced binary.
-- Windows: D3D11VA/DXVA2/MediaFoundation (vcpkg defaults) + NVENC/NVDEC/CUDA
-  (pinned `nvcodec` vcpkg feature); verified in CI by string-checking the exe.
+- Linux: Quercus bootstrap source build using the upstream `tooling/install-deps.sh`
+  (libva/libdrm/ffnvcodec headers) → VAAPI + NVENC/NVDEC/CUDA. CI asserts `h264_vaapi`,
+  `h264_nvenc`, `hevc_nvenc` and a `libva.so` link in the produced binary.
+- Windows: pinned **BtbN FFmpeg 9.0.2 GPL shared** build (dynamic DLLs + MSVC import
+  libraries, SHA256-pinned autobuild) → NVENC/NVDEC/CUDA, QSV (oneVPL), AMF and
+  D3D11VA/DXVA2/MediaFoundation. CI asserts `h264_nvenc`/`hevc_nvenc`/`h264_qsv`/
+  `h264_amf`/`h264_mf`/`d3d11va` in `avcodec-*.dll`.
 - macOS: VideoToolbox (H.264/HEVC), always enabled by the FFmpeg bootstrap; verified in CI.
 - Note: the engine still opens its default software encoder for **export** (`libx264`),
   so hardware paths speed up decoding/preview (and proxy generation via an external

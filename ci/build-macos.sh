@@ -23,20 +23,23 @@ export QUERCUS_FFMPEG_CACHE="${QUERCUS_FFMPEG_CACHE:-$WORK_ROOT/quercus-ffmpeg}"
 [ "$(uname -s)" = "Darwin" ] || { echo "macOS only" >&2; exit 1; }
 [ "$(uname -m)" = "arm64" ] || { echo "arm64 only" >&2; exit 1; }
 
-echo "==> build tools"
-# 与 example-mcp scripts/install-deps.sh 的 macOS 列表一致
-command -v cmake >/dev/null || brew install cmake
-command -v nasm >/dev/null || brew install nasm
-command -v meson >/dev/null || brew install meson
-command -v ninja >/dev/null || brew install ninja
-command -v pkg-config >/dev/null || brew install pkgconf
-command -v autoconf >/dev/null || brew install autoconf automake libtool autoconf-archive gperf
-
 echo "==> upstream copy"
 mkdir -p "$WORK_ROOT"
 rm -rf "$BUILD_SRC"
 cp -a "$UPSTREAM_SRC" "$BUILD_SRC"
 export CARGO_TARGET_DIR="$TARGET_DIR"
+
+echo "==> cargo fetch"
+cargo fetch --manifest-path "$BUILD_SRC/Cargo.toml"
+
+# 依赖集合直接来自 Quercus 的 tooling/install-deps.sh（brew 包），
+# 避免这里和上游各自维护一份列表。
+if [ "${CI:-}" = "true" ] || [ "${QUERCUS_INSTALL_DEPS:-0}" = "1" ]; then
+	echo "==> install system dependencies (Quercus tooling/install-deps.sh)"
+	DEPS_SCRIPT=$(ls -d "${CARGO_HOME:-$HOME/.cargo}"/registry/src/*/quercus-ffmpeg-bootstrap-*/tooling/install-deps.sh 2>/dev/null | sort -V | tail -n 1)
+	[ -n "$DEPS_SCRIPT" ] || { echo "ERROR: quercus-ffmpeg-bootstrap tooling/install-deps.sh not found (run cargo fetch first)" >&2; exit 1; }
+	bash "$DEPS_SCRIPT"
+fi
 
 echo "==> cargo build (FFmpeg + OCIO built from source, static; first run is slow)"
 # OCIO 由 ocio-sys bundled 特性静态构建

@@ -111,9 +111,9 @@ mcp.json         可直接使用的 MCP 客户端配置
 ## 构建与发布（GitHub Actions）
 
 - 三个 job 分别在 `ubuntu-24.04`、`windows-latest`、`macos-15` 原生构建 `oak-mcp`：
-  三平台的 FFmpeg 9（静态）与 OpenColorIO（静态）都由 quercus bootstrap /
-  `ocio-sys` bundled 机制从源码构建（不用系统 FFmpeg、BtbN、conda 或 Homebrew OCIO）；
-  CI 会缓存构建前缀，重复构建很快；
+  Linux/macOS 由 quercus bootstrap / `ocio-sys` bundled 从源码静态构建 FFmpeg 9 与
+  OpenColorIO；Windows 使用固定版本的 BtbN FFmpeg 9.0.2 GPL **shared** 预编译包
+  （动态 DLL）+ 静态 bundled OpenColorIO。CI 会缓存构建/下载的前缀。
 - 打 `v*` tag 触发构建 → GitHub Release + npm 发布，npm 发布走
   [Trusted Publishing](https://docs.npmjs.com/trusted-publishers)（GitHub Actions OIDC，
   `id-token: write`，不再需要 `NPM_TOKEN` secret）；npmjs.com 上需为 5 个
@@ -123,11 +123,12 @@ mcp.json         可直接使用的 MCP 客户端配置
 
 ### 发布产物的硬件编解码
 
-- Linux：VAAPI + VDPAU + NVENC/NVDEC/CUDA（`libva-dev`、`libvdpau-dev`、`libdrm-dev`，
-  以及固定版本的 `nv-codec-headers`）；CI 用 `h264_vaapi`、`h264_nvenc`、`h264_vdpau`
-  字符串和 `libva.so` 动态链接做校验；
-- Windows：D3D11VA/DXVA2/MediaFoundation（vcpkg 默认）+ NVENC/NVDEC/CUDA
-  （固定版本的 `nvcodec` vcpkg 特性）；CI 对 exe 做字符串校验；
+- Linux：Quercus bootstrap 源码构建，依赖直接来自上游 `tooling/install-deps.sh`
+  （libva/libdrm/ffnvcodec 头文件）→ VAAPI + NVENC/NVDEC/CUDA；CI 用 `h264_vaapi`、
+  `h264_nvenc`、`hevc_nvenc` 字符串和 `libva.so` 动态链接做校验；
+- Windows：固定版本的 **BtbN FFmpeg 9.0.2 GPL shared** 构建（动态 DLL + MSVC 导入库，
+  autobuild 资产带 SHA256 校验）→ NVENC/NVDEC/CUDA、QSV（oneVPL）、AMF 以及
+  D3D11VA/DXVA2/MediaFoundation；CI 对 `avcodec-*.dll` 做字符串校验；
 - macOS：VideoToolbox（H.264/HEVC），FFmpeg bootstrap 默认启用；CI 做字符串校验；
 - 注意：引擎**导出**时仍打开默认软件编码器（`libx264`），硬件路径加速的是解码/预览
   （以及经由外部 `ffmpeg` 的代理生成）；硬件编码导出需要改引擎。
