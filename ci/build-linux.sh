@@ -1,30 +1,28 @@
 #!/usr/bin/env bash
 # GitHub Actions: 构建 oak-mcp Linux x86_64，并把 bin/ + lib/ 放到 $OUT_DIR。
 #
-# 环境变量（由 workflow 提供，可覆盖）：
-#   UPSTREAM_SRC   干净的 example-mcp 源码目录
-#   WORK_ROOT      工作目录（默认 $RUNNER_TEMP/oak-build）
-#   FFMPEG_PREFIX  FFmpeg 9 安装前缀（默认 $WORK_ROOT/ffmpeg9）
-#   OUT_DIR        产物目录（默认 $WORK_ROOT/out/linux-x64）
-#   REPO_ROOT      本插件仓库根目录（提供 ci/ 与 cross-build/）
+# FFmpeg 9 与 OpenColorIO 都由 quercus 的 bootstrap 机制从源码**静态**构建：
+#   - ffmpeg: quercus-ffmpeg-bootstrap → vendored tooling/ffmpeg/build-ffmpeg.sh
+#   - OCIO:   ocio-sys `bundled` 特性 → vendored OpenColorIO CMake
+# 不使用系统 FFmpeg / conda / Homebrew OCIO。首次构建较慢，workflow 会缓存前缀。
+#
+# 环境变量：
+#   UPSTREAM_SRC          干净的 example-mcp 源码目录
+#   WORK_ROOT             工作目录（默认 $RUNNER_TEMP/oak-build）
+#   QUERCUS_FFMPEG_CACHE  bootstrap 缓存目录（默认 $WORK_ROOT/quercus-ffmpeg）
+#   OUT_DIR               产物目录（默认 $WORK_ROOT/out/linux-x64）
+#   REPO_ROOT             本插件仓库根目录
 set -euo pipefail
 
 REPO_ROOT="${REPO_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 WORK_ROOT="${WORK_ROOT:-${RUNNER_TEMP:-/tmp}/oak-build}"
 UPSTREAM_SRC="${UPSTREAM_SRC:?UPSTREAM_SRC is required}"
-FFMPEG_PREFIX="${FFMPEG_PREFIX:-$WORK_ROOT/ffmpeg9}"
 OUT_DIR="${OUT_DIR:-$WORK_ROOT/out/linux-x64}"
 BUILD_SRC="$WORK_ROOT/example-mcp-build"
 TARGET_DIR="$WORK_ROOT/target-linux"
+export QUERCUS_FFMPEG_CACHE="${QUERCUS_FFMPEG_CACHE:-$WORK_ROOT/quercus-ffmpeg}"
 
-mkdir -p "$WORK_ROOT" "$OUT_DIR"
-
-echo "==> FFmpeg 9 ($FFMPEG_PREFIX)"
-if [ -f "$FFMPEG_PREFIX/.ok" ] && [ -f "$FFMPEG_PREFIX/lib/pkgconfig/libavcodec.pc" ]; then
-	echo "cache hit"
-else
-	PREFIX="$FFMPEG_PREFIX" bash "$REPO_ROOT/ci/build-ffmpeg9-linux.sh" "$FFMPEG_PREFIX"
-fi
+mkdir -p "$WORK_ROOT" "$OUT_DIR" "$QUERCUS_FFMPEG_CACHE"
 
 echo "==> patched upstream copy"
 rm -rf "$BUILD_SRC"
@@ -33,9 +31,7 @@ export CARGO_TARGET_DIR="$TARGET_DIR"
 cargo fetch --manifest-path "$BUILD_SRC/Cargo.toml"
 python3 "$REPO_ROOT/ci/patch-quercus-ffmpeg-link.py" "$BUILD_SRC" "$WORK_ROOT" "$REPO_ROOT"
 
-echo "==> cargo build"
-export FFMPEG_DIR="$FFMPEG_PREFIX"
-export PKG_CONFIG_PATH="$FFMPEG_PREFIX/lib/pkgconfig"
+echo "==> cargo build (FFmpeg + OCIO built from source, static; first run is slow)"
 export WGPU_BACKEND="${WGPU_BACKEND:-vulkan}"
 cargo build --release --manifest-path "$BUILD_SRC/Cargo.toml"
 

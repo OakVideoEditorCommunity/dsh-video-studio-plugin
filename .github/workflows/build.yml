@@ -23,6 +23,7 @@ jobs:
   linux-x64:
     name: Linux x86_64
     runs-on: ubuntu-24.04
+    timeout-minutes: 240
     steps:
       - uses: actions/checkout@v4
       - name: Checkout upstream example-mcp
@@ -36,21 +37,19 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             build-essential clang libclang-dev cmake ninja-build pkg-config pkgconf \
-            perl python3 curl ca-certificates git xz-utils nasm yasm zip unzip \
-            zlib1g-dev libbz2-dev liblzma-dev libnuma-dev \
-            libx264-dev libx265-dev libvpx-dev libdav1d-dev libopus-dev \
-            libvorbis-dev libtheora-dev libmp3lame-dev libspeex-dev \
-            libopenjp2-7-dev libwebp-dev libsnappy-dev \
-            libfreetype-dev libfontconfig1-dev libfribidi-dev libass-dev \
+            perl python3 curl ca-certificates git xz-utils bzip2 tar patch nasm yasm \
+            meson autoconf autoconf-archive automake libtool gperf zip unzip \
+            libnuma-dev zlib1g-dev \
             libpipewire-0.3-dev libjack-jackd2-dev libasound2-dev libpulse-dev libsndfile1-dev \
             libxkbcommon-dev libxkbcommon-x11-dev libudev-dev \
             libgl-dev libglvnd-dev libgl1-mesa-dev libegl-dev \
+            libfontconfig1-dev libfreetype-dev \
             libvulkan1 mesa-vulkan-drivers libgl1-mesa-dri libegl1 libgl1 libglx-mesa0 mesa-utils xvfb
-      - name: Cache FFmpeg 9
+      - name: Cache quercus FFmpeg bootstrap prefix
         uses: actions/cache@v4
         with:
-          path: ${{ runner.temp }}/oak-build/ffmpeg9
-          key: ffmpeg9-linux-x64-${{ hashFiles('ci/build-ffmpeg9-linux.sh') }}
+          path: ${{ runner.temp }}/oak-build/quercus-ffmpeg/ffmpeg
+          key: quercus-ffmpeg-linux-x64-v1
       - name: Build oak-mcp
         env:
           UPSTREAM_SRC: ${{ github.workspace }}/upstream-src
@@ -67,6 +66,7 @@ jobs:
   windows-x64:
     name: Windows x86_64
     runs-on: windows-latest
+    timeout-minutes: 240
     steps:
       - uses: actions/checkout@v4
       - name: Checkout upstream example-mcp
@@ -79,21 +79,11 @@ jobs:
         uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x64
-      - name: Download FFmpeg 9 (BtbN shared, MSVC)
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $zip = Join-Path $env:RUNNER_TEMP 'ffmpeg9.zip'
-          $prefix = Join-Path $env:RUNNER_TEMP 'oak-build\ffmpeg9'
-          if (-not (Test-Path (Join-Path $prefix 'include'))) {
-            Invoke-WebRequest -Uri 'https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n9.0-latest-win64-gpl-shared-9.0.zip' -OutFile $zip
-            $extract = Join-Path $env:RUNNER_TEMP 'ffmpeg9-extract'
-            Expand-Archive -Path $zip -DestinationPath $extract -Force
-            $inner = Get-ChildItem $extract -Directory | Select-Object -First 1
-            New-Item -ItemType Directory -Force -Path (Split-Path $prefix) | Out-Null
-            Move-Item $inner.FullName $prefix
-          }
-          "FFMPEG_DIR=$prefix" | Out-File -FilePath $env:GITHUB_ENV -Append
+      - name: Cache quercus vcpkg FFmpeg prefix
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/oak-build/quercus-ffmpeg/vcpkg/installed
+          key: quercus-ffmpeg-win64-vcpkg-v1
       - name: Build oak-mcp
         shell: pwsh
         env:
@@ -114,6 +104,7 @@ jobs:
   macos-arm64:
     name: macOS arm64
     runs-on: macos-15
+    timeout-minutes: 240
     steps:
       - uses: actions/checkout@v4
       - name: Checkout upstream example-mcp
