@@ -34,6 +34,9 @@ python3 "$REPO_ROOT/ci/patch-quercus-engine-static.py"
 
 echo "==> cargo build (FFmpeg + OCIO built from source, static; first run is slow)"
 export WGPU_BACKEND="${WGPU_BACKEND:-vulkan}"
+# 让 bootstrap FFmpeg prefix 的 -L 排在系统路径之前：否则链接器可能选中
+# /usr/lib 下非 PIC / 带额外依赖的系统静态库（freetype→png/brotli 等）。
+export RUSTFLAGS="${RUSTFLAGS:-} -L native=$QUERCUS_FFMPEG_CACHE/ffmpeg/lib"
 cargo build --release --manifest-path "$BUILD_SRC/Cargo.toml"
 
 BIN="$TARGET_DIR/release/oak-mcp"
