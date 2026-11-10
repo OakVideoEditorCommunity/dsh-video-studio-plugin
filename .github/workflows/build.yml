@@ -45,8 +45,8 @@ jobs:
             libgl-dev libglvnd-dev libgl1-mesa-dev libegl-dev \
             libfontconfig1-dev libfreetype-dev \
             libvulkan1 mesa-vulkan-drivers libgl1-mesa-dri libegl1 libgl1 libglx-mesa0 mesa-utils xvfb
-      - name: Cache quercus FFmpeg bootstrap prefix
-        uses: actions/cache@v4
+      - name: Restore quercus FFmpeg bootstrap prefix
+        uses: actions/cache/restore@v4
         with:
           path: ${{ runner.temp }}/oak-build/quercus-ffmpeg/ffmpeg
           key: quercus-ffmpeg-linux-x64-v1
@@ -56,6 +56,12 @@ jobs:
           WORK_ROOT: ${{ runner.temp }}/oak-build
           OUT_DIR: ${{ runner.temp }}/oak-build/out/linux-x64
         run: bash ci/build-linux.sh
+      - name: Save quercus FFmpeg bootstrap prefix
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/oak-build/quercus-ffmpeg/ffmpeg
+          key: quercus-ffmpeg-linux-x64-v1
       - name: Upload binary
         uses: actions/upload-artifact@v4
         with:
@@ -79,8 +85,8 @@ jobs:
         uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x64
-      - name: Cache quercus vcpkg FFmpeg prefix
-        uses: actions/cache@v4
+      - name: Restore quercus vcpkg FFmpeg prefix
+        uses: actions/cache/restore@v4
         with:
           path: ${{ runner.temp }}/oak-build/quercus-ffmpeg/vcpkg/installed
           key: quercus-ffmpeg-win64-vcpkg-v1
@@ -94,6 +100,12 @@ jobs:
           $ffmpeg = ($env:FFMPEG_DIR -replace '\\','\\')
           "FFMPEG_DIR=$env:FFMPEG_DIR" | Out-File -FilePath $env:GITHUB_ENV -Append
           ./ci/build-windows.ps1
+      - name: Save quercus vcpkg FFmpeg prefix
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/oak-build/quercus-ffmpeg/vcpkg/installed
+          key: quercus-ffmpeg-win64-vcpkg-v1
       - name: Upload binary
         uses: actions/upload-artifact@v4
         with:
@@ -103,7 +115,7 @@ jobs:
 
   macos-arm64:
     name: macOS arm64
-    runs-on: macos-15
+    runs-on: macos-latest
     timeout-minutes: 240
     steps:
       - uses: actions/checkout@v4
