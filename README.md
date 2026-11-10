@@ -1,101 +1,133 @@
-# Video Studio — DeepSeek Harness 视频剪辑插件
+[English](README.md) | [简体中文](README.zh-CN.md)
 
-把 [Quercus](https://github.com/OakVideoEditorCommunity/quercus-engine) 非线性剪辑引擎的 MCP
-服务器 `oak-mcp`（由 [example-mcp](https://github.com/OakVideoEditorCommunity/example-mcp) 构建）
-接入 [DeepSeek Harness](https://deepseek-harness.github.io/deepseek-harness/)：助手用
-`mcp__oak__*` 工具剪辑视频，GUI 侧栏「视频预览」面板播放成片。
+# Oak DeepSeek Plugin — Video Studio for DeepSeek Harness
 
-## 平台支持
+Connects the [Quercus](https://github.com/OakVideoEditorCommunity/quercus-engine) non-linear
+video-editing engine's MCP server `oak-mcp` (built from
+[example-mcp](https://github.com/OakVideoEditorCommunity/example-mcp)) to
+[DeepSeek Harness](https://deepseek-harness.github.io/deepseek-harness/): the agent edits video
+through `mcp__oak__*` tools, and a **Video Preview** panel in the GUI sidebar plays the exported cuts.
 
-- Windows x86_64（Win10 1809+）
-- Linux x86_64（glibc）
-- macOS arm64（Apple Silicon）
+## Platforms
 
-每个平台都提供两种交付：
+- Windows x86_64 (Win10 1809+)
+- Linux x86_64 (glibc)
+- macOS arm64 (Apple Silicon)
 
-1. **GitHub Release 安装包**（插件 + MCP 二进制 + 安装脚本）；
-2. **npm 包**（`@oakvideoeditor/oak-deepseek-plugin` + 平台二进制包），由 `dsh plugin add` 安装，
-   首次激活自动就位 MCP 二进制。
+Each platform ships in two forms:
 
-## 安装
+1. **GitHub Release installer** (plugin + MCP binary + install scripts);
+2. **npm packages** (`@oakvideoeditor/oak-deepseek-plugin` + platform binary packages). Installing
+   the plugin also provisions the MCP binary on first activation.
 
-### npm（推荐）
+## Install
+
+### npm (recommended)
 
 ```bash
 dsh plugin --profile desktop add @oakvideoeditor/oak-deepseek-plugin
-# 或者让 DSH 的插件安装流程安装该 npm 包
 ```
 
-主包通过 `optionalDependencies` 自动安装当前平台的 MCP 二进制包：
+The plugin installs the matching platform binary through `optionalDependencies`:
 
-| 平台包 | 平台 |
+| Package | Platform |
 |---|---|
 | `@oakvideoeditor/oak-mcp-darwin-arm64` | macOS arm64 |
 | `@oakvideoeditor/oak-mcp-linux-x64` | Linux x86_64 |
 | `@oakvideoeditor/oak-mcp-win32-x64` | Windows x86_64 |
 
-另外发布 **`@oakvideoeditor/oak-mcp`**：可独立用于任意 MCP 客户端（Claude Desktop / Cursor / VS Code 等）：
+Restart DeepSeek Harness afterwards: a film icon **Video Preview** appears in the left sidebar and
+the model gets 50 `mcp__oak__*` tools.
 
-```json
-{ "mcpServers": { "oak": { "command": "npx", "args": ["-y", "@oakvideoeditor/oak-mcp"] } } }
-```
+### GitHub Release installers
 
-安装后**重启 DeepSeek Harness**：左侧栏出现胶片图标「视频预览」，模型工具列表出现
-`mcp__oak__*`（50 个）。
+Download from [Releases](https://github.com/OakVideoEditorCommunity/dsh-video-studio-plugin/releases):
 
-### GitHub Release 安装包
-
-到 [Releases](https://github.com/OakVideoEditorCommunity/dsh-video-studio-plugin/releases) 下载：
-
-| 平台 | 文件 |
+| Platform | Asset |
 |---|---|
 | Windows x86_64 | `video-studio-windows-x86_64.zip` |
 | Linux x86_64 | `video-studio-linux-x86_64.tar.gz` |
 | macOS arm64 | `video-studio-macos-arm64.tar.gz` |
 
-解压后运行对应安装脚本（Windows：`install.ps1`；Linux/macOS：`install.sh`），再重启
-DeepSeek Harness。纯 MCP 构建（接入其他 MCP 客户端）在同一 Release 的
-`oak-mcp-<platform>` 资产里。
+Extract and run `install.ps1` (Windows) or `install.sh` (Linux/macOS), then restart DeepSeek Harness.
+Pure-MCP builds are available as `oak-mcp-<platform>` assets for other MCP clients.
 
-## 使用
+## MCP client configuration (mcp.json)
 
-在对话里描述剪辑需求，例如：
+The repository ships a ready-to-use [mcp.json](mcp.json) (works with any client that reads
+`mcpServers`):
 
-> 把 3 段素材按顺序剪成 10 秒，前两段之间加 0.5 秒交叉溶解，导出 720p MP4。
-
-助手会调用 `mcp__oak__*` 完成 `project_new → media_import → clip_place_linked →
-transition_add / effect_add → preview_frame → export_start → task_wait`，成片写入预览目录后
-在「视频预览」面板播放。
-
-- 预览目录：`~/.dsh/video-studio/previews`
-- 自定义 MCP 路径：环境变量 `VIDEO_STUDIO_MCP_BIN`
-
-## 仓库结构
-
-```
-plugin/          DSH bundle 源码（Host + Client，无构建步骤）
-cross-build/     打包脚本（插件 / 纯 MCP / npm）与 macOS dylib 打包器
-ci/              各平台 CI 构建脚本
-.github/workflows/build.yml   三平台构建 + Release + npm 发布
+```json
+{
+  "mcpServers": {
+    "oak": {
+      "command": "npx",
+      "args": ["-y", "@oakvideoeditor/oak-mcp"]
+    }
+  }
+}
 ```
 
-## 构建与发布（GitHub Actions）
+Claude Desktop: merge it into `~/Library/Application Support/Claude/claude_desktop_config.json`
+(Windows: `%APPDATA%\Claude\claude_desktop_config.json`); Cursor/VS Code: put it in their MCP
+settings. `npx` downloads the platform binary on first run.
 
-- 三个 job 分别在 `ubuntu-24.04`、`windows-latest`、`macos-14` 原生构建 `oak-mcp`：
-  Linux 从源码构建 FFmpeg 9，Windows 用 BtbN FFmpeg 9 shared + conda-forge OCIO 2.5，
-  macOS 用 Homebrew ffmpeg/opencolorio 并把 dylib 打包进 `lib/`；
-- 打 tag（`v0.1.0`）触发构建 → GitHub Release + npm 发布（需仓库 secret `NPM_TOKEN`）；
-- `workflow_dispatch` 只构建产物、不发布。
+If you already have a pure-MCP release archive, point the client at the executable directly:
 
-本地复现可参考 `cross-build/README.md` 与各 `ci/build-*.sh`。
+```json
+{
+  "mcpServers": {
+    "oak": {
+      "command": "/path/to/oak-mcp/bin/oak-mcp"
+    }
+  }
+}
+```
 
-## 已知限制（上游 Quercus 引擎）
+> The DSH plugin does not need mcp.json: its bundle patch registers `mcp__oak__*` automatically.
 
-- `export_start(video+audio)` 只混入第一条音频片段音频（用 `render_audio` + mux 变通）；
-- 关键帧与部分特效不烘焙进导出；
-- 并发负载下引擎可能静默退出，建议串行导出。
+## Use
+
+Describe the edit in the chat, for example:
+
+> Cut the 3 clips into a 10-second sequence with a 0.5 s cross-dissolve between the first two,
+> then export a 720p MP4.
+
+The agent calls `mcp__oak__*`: `project_new → media_import → clip_place_linked →
+transition_add / effect_add → preview_frame → export_start → task_wait`, and the exported cut shows
+up in the **Video Preview** panel.
+
+- Preview folder: `~/.dsh/video-studio/previews`
+- Custom MCP binary: environment variable `VIDEO_STUDIO_MCP_BIN`
+
+## Repository layout
+
+```
+plugin/          DSH bundle source (Host + Client, no build step)
+cross-build/     packagers (plugin / pure MCP / npm) and macOS dylib bundler
+ci/              per-platform CI build scripts
+.github/workflows/build.yml   three-platform build + Release + npm publish
+mcp.json         ready-to-use MCP client configuration
+```
+
+## Build & release (GitHub Actions)
+
+- Three jobs build `oak-mcp` natively on `ubuntu-24.04`, `windows-latest` and `macos-15`:
+  Linux builds FFmpeg 9 from source; Windows uses BtbN FFmpeg 9 shared + conda-forge OCIO 2.5;
+  macOS uses Homebrew ffmpeg/opencolorio and bundles its dylibs into `lib/`.
+- Pushing a `v*` tag triggers build → GitHub Release + npm publish (repository secret `NPM_TOKEN`).
+- `workflow_dispatch` only builds artifacts (no release/publish).
+
+To reproduce locally see `cross-build/README.md` and the `ci/build-*.sh` scripts.
+
+## Known limitations (upstream Quercus engine)
+
+- `export_start(video+audio)` only mixes the audio of the first audio clip (workaround:
+  `render_audio` to a WAV, lay it on the timeline, then export);
+- keyframed parameters and some effects are visible in `preview_frame` but not baked into exports;
+- the engine process may exit silently under concurrent load — run one export at a time.
 
 ## License
 
-GPL-3.0-or-later（见 [LICENSE](LICENSE)）。`oak-mcp` 二进制由 GPL-3.0-or-later 的
-example-mcp 构建。
+GPL-3.0-or-later (see [LICENSE](LICENSE)). The bundled `oak-mcp` binaries are built from the
+GPL-3.0-or-later example-mcp project.

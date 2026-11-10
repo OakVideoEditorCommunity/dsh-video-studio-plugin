@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "oak": {
+      "command": "npx",
+      "args": ["-y", "@oakvideoeditor/oak-mcp"]
+    }
+  }
+}

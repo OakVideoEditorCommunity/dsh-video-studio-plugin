@@ -49,7 +49,7 @@ cross-build/
 - 运行库随 exe app-local：FFmpeg 7 个 DLL + OCIO/Imath/yaml-cpp/pystring/minizip/expat/
   zlib/bz2/lzma/zstd + MSVC CRT。
 
-### macOS arm64（macos-14 runner）
+### macOS arm64（macos-15 runner）
 
 - `brew install ffmpeg opencolorio`；`FFMPEG_DIR=$(brew --prefix ffmpeg)`、
   `OCIO_INSTALL_DIR=$(brew --prefix opencolorio)`、`OCIO_RS_LINK=dynamic`。
