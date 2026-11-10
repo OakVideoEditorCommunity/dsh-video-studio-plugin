@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Video Studio",
+    "description": "Connects the oak MCP video-editing server (Quercus engine) and adds a sidebar preview panel that plays exported cuts."
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "视频剪辑台",
+    "description": "连接 oak MCP（Quercus 引擎）视频剪辑服务器，并在侧栏提供成片预览播放面板。"
+  }
+}

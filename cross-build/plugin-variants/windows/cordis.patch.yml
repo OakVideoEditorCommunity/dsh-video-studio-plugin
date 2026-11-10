@@ -1,0 +1,18 @@
+# video-studio bundle patch — Windows x86_64 分发包
+#
+# MCP 二进制默认位置：%LOCALAPPDATA%\video-studio\oak-mcp.exe（install.ps1 会放好）。
+# 可用环境变量 VIDEO_STUDIO_MCP_BIN 覆盖。
+# 预览目录不配置：插件默认使用 %USERPROFILE%\.dsh\video-studio\previews。
+
+- insert:
+    - id: video-studio-oak-mcp
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: oak
+        transport: stdio
+        command: !!js process.env.VIDEO_STUDIO_MCP_BIN || ((process.env.LOCALAPPDATA || (process.env.USERPROFILE + '/AppData/Local')) + '/video-studio/oak-mcp.exe')
+        toolCallTimeoutMs: 180000
+        failOnStartupError: false
+
+    - id: video-studio
+      name: '@local/video-studio'
