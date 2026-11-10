@@ -9,11 +9,9 @@ DSH 插件 / npm 包 / GitHub Release 资产。
 
 ```
 ci/                          GitHub Actions 各平台构建脚本
-  build-linux.sh              Linux：从源码构建 FFmpeg 9 + cargo build + 收集 .so
-  patch-quercus-ffmpeg-link.py  Linux 非 PIC 静态系统库修复（见下）
-  build-windows.ps1           Windows：native MSVC + vcpkg 静态 FFmpeg + bundled OCIO
-  build-macos.sh              macOS：Homebrew FFmpeg/OCIO + dylib 打包
-  patches/                    上游 crate 补丁
+  build-linux.sh              Linux：BtbN FFmpeg shared + cargo build + .so/rpath
+  build-windows.ps1           Windows：native MSVC + BtbN FFmpeg shared + bundled OCIO
+  build-macos.sh              macOS：源码 FFmpeg（FFMPEG_DIR）+ dylib 打包
 cross-build/
   package-plugins.sh          生成三平台 DSH 插件分发包（zip/tar.gz）
   package-mcp.sh              生成三平台纯 MCP 分发包
@@ -28,33 +26,29 @@ cross-build/
 
 ### Linux x86_64（ubuntu-24.04 runner）
 
-- FFmpeg 9 由 `quercus-ffmpeg-bootstrap` 自动从 vendored `tooling/ffmpeg/build-ffmpeg.sh`
-  源码静态构建（全部 codec 依赖也从源码构建），前缀缓存在 `QUERCUS_FFMPEG_CACHE`。
+- 上游要求显式 `FFMPEG_DIR`；这里下载固定版本的 **BtbN FFmpeg 9.0.2 GPL shared**
+  （autobuild + SHA256），设置 `FFMPEG_DIR`/`PKG_CONFIG_PATH`/`LD_LIBRARY_PATH`。
 - OpenColorIO 由 `ocio-sys` 的 bundled 特性从 vendored 源码 CMake **静态**构建。
-- 上游 `quercus-ffmpeg-link` 会在 Linux 上把 `/usr/lib` 下的**非 PIC** 静态库
-  （bz2/lzma/z/stdc++/asound/pipewire…）强绑为 `static=`，导致链接 shared cdylib 时
-  `R_X86_64_PC32 ... recompile with -fPIC`。`ci/patches/quercus-ffmpeg-link-linux-dynamic.patch`
-  让这些系统库改回动态链接（FFmpeg prefix 内的 .a 仍是 static）。
-- 依赖集合来自上游 `tooling/install-deps.sh`（libva/libdrm/ffnvcodec），FFmpeg 因此编入
-  VAAPI、NVENC/NVDEC/CUDA；`--check` 需要 Mesa 软件 Vulkan（apt `mesa-vulkan-drivers`）。
+- `--check` 需要 Mesa 软件 Vulkan（apt `mesa-vulkan-drivers`）。
 - 产物把非 glibc 运行库收进 `lib/`，二进制与每个库都带 `$ORIGIN` rpath；按 Ubuntu 24.04
   （glibc 2.39）构建，面向 Debian 13 / Fedora 43 / Arch 等现代发行版。
 
 ### Windows x86_64（windows-latest，native MSVC）
 
-- FFmpeg 9 由 `quercus-ffmpeg-bootstrap` 下载 pinned vcpkg 并用 `x64-windows-static-md`
-  从源码静态构建（上游 Windows CI 的方式；首次构建慢，CI 缓存 prefix）。
-- OpenColorIO 由 `ocio-sys` 的 `bundled` 特性从 vendored 源码用 CMake **静态构建**
-  （与上游 Windows CI 一致；不需要 conda / 预编译 OCIO）。
+- 同样用固定版本的 **BtbN FFmpeg 9.0.2 GPL shared**（headers + MSVC 导入库 + DLL），
+  通过 `FFMPEG_DIR`/`PKG_CONFIG_PATH` 动态链接；含 NVENC/NVDEC/CUDA、QSV、AMF、
+  D3D11VA/DXVA2/MediaFoundation。
+- OpenColorIO 由 `ocio-sys` 的 `bundled` 特性从源码用 CMake **静态构建**。
 - `ilammy/msvc-dev-cmd` 设置 MSVC 环境；`BINDGEN_EXTRA_CLANG_ARGS` 从 `INCLUDE`
   生成，保证 bindgen 按 Windows 头文件解析（否则 `AVIOContext` 布局错位）。
-- 运行库随 exe app-local：FFmpeg 7 个 DLL + OCIO/Imath/yaml-cpp/pystring/minizip/expat/
+- 运行库随 exe app-local：FFmpeg DLL + OCIO/Imath/yaml-cpp/pystring/minizip/expat/
   zlib/bz2/lzma/zstd + MSVC CRT。
 
 ### macOS arm64（macos-15 runner）
 
 - 只需 Homebrew 构建工具（cmake/nasm/meson/ninja/pkgconf/autotools/gperf）；
-  FFmpeg 9 与 OpenColorIO 都由 bootstrap / ocio-sys bundled 从源码静态构建，
+  上游的 FFmpeg 构建脚本（scripts/ffmpeg 或 tooling/ffmpeg）从源码构建 FFmpeg 9，
+  导出 `FFMPEG_DIR`；OpenColorIO 由 ocio-sys bundled 静态构建。
   产物通常不依赖任何 Homebrew dylib。
 - `cross-build/bundle-macos-dylibs.py` 递归收集 Homebrew dylib 到 `lib/`，把 install name
   改写为 `@executable_path/../lib` / `@loader_path`，并 ad-hoc 重签，产物不依赖本机 Homebrew。

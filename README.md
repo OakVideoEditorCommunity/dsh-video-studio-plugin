@@ -125,17 +125,16 @@ mcp.json         ready-to-use MCP client configuration
 
 ### Hardware codecs / runtime libraries
 
-- Linux: Quercus bootstrap builds FFmpeg 9 from source with the upstream
-  `tooling/install-deps.sh` set (libva/libdrm/ffnvcodec), so VAAPI and
-  NVENC/NVDEC/CUDA are compiled in; the binary bundles its non-glibc runtime
-  libraries in `lib/` and carries a `$ORIGIN` rpath (glibc 2.39 baseline,
-  targeting Debian 13 / Fedora 43 / Arch and newer).
-- Windows: Quercus bootstrap builds FFmpeg 9 from source via pinned vcpkg
-  (D3D11VA/DXVA2/MediaFoundation are on by default); NVENC/QSV/AMF depend on
-  upstream bootstrap support and will be refreshed with Quercus 0.7.1.
-- macOS: VideoToolbox (H.264/HEVC).
-- Note: the engine still opens its default software encoder for **export**
-  (`libx264`), so hardware paths accelerate decoding/preview.
+- Upstream Quercus requires an explicit `FFMPEG_DIR`; this repo supplies the pinned
+  **BtbN FFmpeg 9.0.2 GPL shared** build on Linux and Windows (SHA256-pinned autobuild),
+  so VAAPI, NVENC/NVDEC/CUDA, QSV, AMF and D3D11VA/DXVA2/MediaFoundation are available.
+  No crate/source patches are applied.
+- macOS has no BtbN build; the upstream FFmpeg script builds FFmpeg 9 from source
+  (VideoToolbox) and points `FFMPEG_DIR` at it.
+- Linux artifacts bundle non-glibc runtime libraries in `lib/`, carry `$ORIGIN` rpath,
+  and are built on Ubuntu 24.04 (glibc 2.39 baseline; Debian 13 / Fedora 43 / Arch).
+- Note: the engine still opens its default software encoder for **export** (`libx264`),
+  so hardware paths accelerate decoding/preview.
 
 To reproduce locally see `cross-build/README.md` and the `ci/build-*.sh` scripts.
 

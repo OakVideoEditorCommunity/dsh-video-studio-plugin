@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # GitHub Actions: 构建 oak-mcp macOS arm64，并把 bin/ + lib/ 放到 $OUT_DIR。
 #
-# FFmpeg 9 与 OpenColorIO 都由 quercus bootstrap 从源码静态构建（不依赖 Homebrew
-# ffmpeg/opencolorio，只需要 Homebrew 的构建工具链）。产物通常只剩系统框架依赖。
+# 上游 0.7.1 起要求显式提供 FFMPEG_DIR；macOS 没有 BtbN 预编译包，这里用上游
+# 的 FFmpeg 构建脚本从源码构建（含 VideoToolbox），OpenColorIO 由 ocio-sys
+# bundled 特性静态构建。不依赖 Homebrew ffmpeg/opencolorio。
 #
 # 环境变量：
 #   UPSTREAM_SRC          干净的 example-mcp 源码目录
 #   WORK_ROOT             工作目录（默认 $RUNNER_TEMP/oak-build）
-#   QUERCUS_FFMPEG_CACHE  bootstrap 缓存目录（默认 $WORK_ROOT/quercus-ffmpeg）
 #   OUT_DIR               产物目录（默认 $WORK_ROOT/out/macos-arm64）
 #   REPO_ROOT             本插件仓库根目录
 set -euo pipefail
@@ -18,10 +18,17 @@ UPSTREAM_SRC="${UPSTREAM_SRC:?UPSTREAM_SRC is required}"
 OUT_DIR="${OUT_DIR:-$WORK_ROOT/out/macos-arm64}"
 BUILD_SRC="$WORK_ROOT/example-mcp-build"
 TARGET_DIR="$WORK_ROOT/target-macos"
-export QUERCUS_FFMPEG_CACHE="${QUERCUS_FFMPEG_CACHE:-$WORK_ROOT/quercus-ffmpeg}"
 
 [ "$(uname -s)" = "Darwin" ] || { echo "macOS only" >&2; exit 1; }
 [ "$(uname -m)" = "arm64" ] || { echo "arm64 only" >&2; exit 1; }
+
+echo "==> build tools (Homebrew)"
+command -v cmake >/dev/null || brew install cmake
+command -v nasm >/dev/null || brew install nasm
+command -v meson >/dev/null || brew install meson
+command -v ninja >/dev/null || brew install ninja
+command -v pkg-config >/dev/null || brew install pkgconf
+command -v autoconf >/dev/null || brew install autoconf automake libtool autoconf-archive gperf
 
 echo "==> upstream copy"
 mkdir -p "$WORK_ROOT"
@@ -29,20 +36,20 @@ rm -rf "$BUILD_SRC"
 cp -a "$UPSTREAM_SRC" "$BUILD_SRC"
 export CARGO_TARGET_DIR="$TARGET_DIR"
 
-echo "==> cargo fetch"
-cargo fetch --manifest-path "$BUILD_SRC/Cargo.toml"
+# 上游的 FFmpeg 构建脚本位置在 0.7.0/0.7.1 之间可能从 scripts/ 移到 tooling/。
+BUILD_FFMPEG="$BUILD_SRC/scripts/ffmpeg/build-ffmpeg.sh"
+[ -f "$BUILD_FFMPEG" ] || BUILD_FFMPEG="$BUILD_SRC/tooling/ffmpeg/build-ffmpeg.sh"
+[ -f "$BUILD_FFMPEG" ] || { echo "ERROR: upstream FFmpeg build script not found" >&2; exit 1; }
 
-# 依赖集合直接来自 Quercus 的 tooling/install-deps.sh（brew 包），
-# 避免这里和上游各自维护一份列表。
-if [ "${CI:-}" = "true" ] || [ "${QUERCUS_INSTALL_DEPS:-0}" = "1" ]; then
-	echo "==> install system dependencies (Quercus tooling/install-deps.sh)"
-	DEPS_SCRIPT=$(ls -d "${CARGO_HOME:-$HOME/.cargo}"/registry/src/*/quercus-ffmpeg-bootstrap-*/tooling/install-deps.sh 2>/dev/null | sort -V | tail -n 1)
-	[ -n "$DEPS_SCRIPT" ] || { echo "ERROR: quercus-ffmpeg-bootstrap tooling/install-deps.sh not found (run cargo fetch first)" >&2; exit 1; }
-	bash "$DEPS_SCRIPT"
+echo "==> build FFmpeg (source, VideoToolbox)"
+if [ ! -f "$BUILD_SRC/.cache/ffmpeg/lib/libavcodec.a" ]; then
+	(cd "$BUILD_SRC" && bash "$BUILD_FFMPEG")
 fi
+export FFMPEG_DIR="$BUILD_SRC/.cache/ffmpeg"
+export PKG_CONFIG_PATH="$FFMPEG_DIR/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+[ -f "$FFMPEG_DIR/lib/libavcodec.a" ] || { echo "ERROR: FFMPEG_DIR is incomplete: $FFMPEG_DIR" >&2; exit 1; }
 
-echo "==> cargo build (FFmpeg + OCIO built from source, static; first run is slow)"
-# OCIO 由 ocio-sys bundled 特性静态构建
+echo "==> cargo build (FFmpeg via FFMPEG_DIR + OCIO bundled)"
 export OCIO_RS_LINK=static
 export OCIO_RS_ENABLE_REAL=1
 cargo build --release --manifest-path "$BUILD_SRC/Cargo.toml"
@@ -50,8 +57,8 @@ cargo build --release --manifest-path "$BUILD_SRC/Cargo.toml"
 BIN="$TARGET_DIR/release/oak-mcp"
 [ -x "$BIN" ] || { echo "binary missing: $BIN" >&2; exit 1; }
 
-echo "==> bundle non-system dylibs (FFmpeg/OCIO static; may still pull zlib etc.)"
-export BUNDLE_EXTRA_SEARCH_DIRS="$QUERCUS_FFMPEG_CACHE:$TARGET_DIR"
+echo "==> bundle non-system dylibs"
+export BUNDLE_EXTRA_SEARCH_DIRS="$FFMPEG_DIR:$TARGET_DIR"
 rm -rf "$OUT_DIR"
 python3 "$REPO_ROOT/cross-build/bundle-macos-dylibs.py" "$BIN" "$OUT_DIR"
 

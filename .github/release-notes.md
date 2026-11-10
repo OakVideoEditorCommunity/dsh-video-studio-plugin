@@ -13,9 +13,10 @@
 
 ## 构建说明
 
-Linux 使用 Quercus bootstrap 自行构建 FFmpeg 9（VAAPI/NVENC/NVDEC），Windows 使用
-固定版本 vcpkg 自行构建（D3D11VA/DXVA2/MediaFoundation），macOS 使用 VideoToolbox；
-Linux 产物带 `$ORIGIN` rpath 并随附运行库。导出编码仍由引擎默认软件编码器完成。
+上游要求显式 `FFMPEG_DIR`：Linux/Windows 使用固定版本的 BtbN FFmpeg 9.0.2 GPL shared
+（VAAPI、NVENC/NVDEC/CUDA、QSV、AMF、D3D11VA/DXVA2/MediaFoundation），macOS 用上游脚本
+从源码构建（VideoToolbox）。Linux 产物带 `$ORIGIN` rpath 并随附运行库；导出编码仍由
+引擎默认软件编码器完成。
 
 ## 下载
 

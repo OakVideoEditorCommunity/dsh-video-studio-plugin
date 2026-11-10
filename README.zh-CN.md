@@ -123,14 +123,13 @@ mcp.json         可直接使用的 MCP 客户端配置
 
 ### 硬件编解码 / 运行库
 
-- Linux：Quercus bootstrap 从源码构建 FFmpeg 9，依赖使用上游 `tooling/install-deps.sh`
-  的集合（libva/libdrm/ffnvcodec），因此编入 VAAPI 与 NVENC/NVDEC/CUDA；二进制把
-  非 glibc 运行库收进 `lib/` 并带 `$ORIGIN` rpath（glibc 2.39 基线，面向 Debian 13 /
-  Fedora 43 / Arch 及更新版本）。
-- Windows：Quercus bootstrap 通过固定版本 vcpkg 从源码构建 FFmpeg 9
-  （D3D11VA/DXVA2/MediaFoundation 默认开启）；NVENC/QSV/AMF 依赖上游 bootstrap 支持，
-  等 Quercus 0.7.1 后一并刷新。
-- macOS：VideoToolbox（H.264/HEVC）。
+- 上游 Quercus 要求显式提供 `FFMPEG_DIR`；本仓库在 Linux/Windows 直接使用固定版本的
+  **BtbN FFmpeg 9.0.2 GPL shared**（autobuild + SHA256），因此带 VAAPI、
+  NVENC/NVDEC/CUDA、QSV、AMF、D3D11VA/DXVA2/MediaFoundation；不需要任何 crate/源码补丁。
+- macOS 没有 BtbN 构建：用上游 FFmpeg 脚本从源码构建（VideoToolbox），并把
+  `FFMPEG_DIR` 指过去。
+- Linux 产物把非 glibc 运行库收进 `lib/`，带 `$ORIGIN` rpath；在 Ubuntu 24.04 上构建
+  （glibc 2.39 基线，面向 Debian 13 / Fedora 43 / Arch）。
 - 注意：引擎**导出**仍使用默认软件编码器（`libx264`），硬件路径加速解码/预览。
 
 本地复现可参考 `cross-build/README.md` 与各 `ci/build-*.sh`。

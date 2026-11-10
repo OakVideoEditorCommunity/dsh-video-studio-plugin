@@ -1,15 +1,13 @@
 #!/usr/bin/env bash
 # GitHub Actions: 构建 oak-mcp Linux x86_64，并把 bin/ + lib/ 放到 $OUT_DIR。
 #
-# FFmpeg 9 与 OpenColorIO 都由 quercus 的 bootstrap 机制从源码**静态**构建：
-#   - ffmpeg: quercus-ffmpeg-bootstrap → vendored tooling/ffmpeg/build-ffmpeg.sh
-#   - OCIO:   ocio-sys `bundled` 特性 → vendored OpenColorIO CMake
-# 不使用系统 FFmpeg。首次构建较慢，workflow 会缓存前缀。
+# FFmpeg 9 使用固定版本的 BtbN GPL shared 预编译包，并通过 FFMPEG_DIR 指定
+# （上游 0.7.1 起要求自行提供 FFmpeg，不再在 cargo build 里构建源码）。
+# OpenColorIO 仍由 ocio-sys `bundled` 特性从源码静态构建。
 #
 # 环境变量：
 #   UPSTREAM_SRC          干净的 example-mcp 源码目录
 #   WORK_ROOT             工作目录（默认 $RUNNER_TEMP/oak-build）
-#   QUERCUS_FFMPEG_CACHE  bootstrap 缓存目录（默认 $WORK_ROOT/quercus-ffmpeg）
 #   OUT_DIR               产物目录（默认 $WORK_ROOT/out/linux-x64）
 #   REPO_ROOT             本插件仓库根目录
 set -euo pipefail
@@ -20,45 +18,45 @@ UPSTREAM_SRC="${UPSTREAM_SRC:?UPSTREAM_SRC is required}"
 OUT_DIR="${OUT_DIR:-$WORK_ROOT/out/linux-x64}"
 BUILD_SRC="$WORK_ROOT/example-mcp-build"
 TARGET_DIR="$WORK_ROOT/target-linux"
-export QUERCUS_FFMPEG_CACHE="${QUERCUS_FFMPEG_CACHE:-$WORK_ROOT/quercus-ffmpeg}"
 
-mkdir -p "$WORK_ROOT" "$OUT_DIR" "$QUERCUS_FFMPEG_CACHE"
+# Pinned BtbN FFmpeg 9.0.2 GPL shared build (autobuild release + SHA256).
+BTBN_URL="https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-11-10-12-39/ffmpeg-n9.0.2-48-gd4070a14ce-linux64-gpl-shared-9.0.tar.xz"
+BTBN_SHA256="19bc462dc230253465326c4600ca24a72475c6945b4f0c5d2bca522fdc2afc3f"
+BTBN_ROOT="$WORK_ROOT/btbn-ffmpeg-linux"
+
+mkdir -p "$WORK_ROOT" "$OUT_DIR"
 
 echo "==> patched upstream copy"
 rm -rf "$BUILD_SRC"
 cp -a "$UPSTREAM_SRC" "$BUILD_SRC"
 export CARGO_TARGET_DIR="$TARGET_DIR"
-cargo fetch --manifest-path "$BUILD_SRC/Cargo.toml"
 
-SUDO=""
-[ "$(id -u)" = 0 ] || SUDO="sudo"
-
-# CI gets the toolchain/system libraries from Quercus itself, so the release
-# build and upstream CI share one dependency set (libva/libdrm/ffnvcodec...).
-# Local builds are untouched unless QUERCUS_INSTALL_DEPS=1 is set.
-if [ "${CI:-}" = "true" ] || [ "${QUERCUS_INSTALL_DEPS:-0}" = "1" ]; then
-	echo "==> install system dependencies (Quercus tooling/install-deps.sh)"
-	DEPS_SCRIPT=$(ls -d "${CARGO_HOME:-$HOME/.cargo}"/registry/src/*/quercus-ffmpeg-bootstrap-*/tooling/install-deps.sh 2>/dev/null | sort -V | tail -n 1)
-	[ -n "$DEPS_SCRIPT" ] || { echo "ERROR: quercus-ffmpeg-bootstrap tooling/install-deps.sh not found (run cargo fetch first)" >&2; exit 1; }
-	bash "$DEPS_SCRIPT"
-	# Some install-deps branches omit ffnvcodec headers, which NVDEC/NVENC need.
-	if ! pkg-config --exists ffnvcodec 2>/dev/null; then
-		echo "==> install ffnvcodec headers (NVENC/NVDEC)"
-		rm -rf "$WORK_ROOT/nv-codec-headers"
-		git clone --depth 1 https://github.com/FFmpeg/nv-codec-headers.git "$WORK_ROOT/nv-codec-headers"
-		$SUDO make -C "$WORK_ROOT/nv-codec-headers" install PREFIX=/usr/local
-		export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
-	fi
+# ---- BtbN FFmpeg 9.0 GPL shared ------------------------------------------------
+BTBN_PREFIX=""
+if [ -d "$BTBN_ROOT" ]; then
+	BTBN_PREFIX=$(find "$BTBN_ROOT" -maxdepth 1 -mindepth 1 -type d -name 'ffmpeg-*' | head -n 1)
 fi
+if [ -z "$BTBN_PREFIX" ] || [ ! -e "$BTBN_PREFIX/lib/libavcodec.so" ]; then
+	echo "==> downloading BtbN FFmpeg 9.0 shared build"
+	ARCHIVE="$WORK_ROOT/btbn-ffmpeg-linux.tar.xz"
+	curl -fL --retry 3 --output "$ARCHIVE" "$BTBN_URL"
+	echo "$BTBN_SHA256  $ARCHIVE" | sha256sum -c -
+	rm -rf "$BTBN_ROOT"
+	mkdir -p "$BTBN_ROOT"
+	tar -xJf "$ARCHIVE" -C "$BTBN_ROOT"
+	BTBN_PREFIX=$(find "$BTBN_ROOT" -maxdepth 1 -mindepth 1 -type d -name 'ffmpeg-*' | head -n 1)
+fi
+[ -n "$BTBN_PREFIX" ] && [ -e "$BTBN_PREFIX/lib/libavcodec.so" ] || {
+	echo "ERROR: BtbN FFmpeg prefix is incomplete: $BTBN_PREFIX" >&2
+	exit 1
+}
+export FFMPEG_DIR="$BTBN_PREFIX"
+export PKG_CONFIG_PATH="$BTBN_PREFIX/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+export LD_LIBRARY_PATH="$BTBN_PREFIX/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+echo "==> FFmpeg: BtbN 9.0.2 shared -> $BTBN_PREFIX"
 
-python3 "$REPO_ROOT/ci/patch-quercus-ffmpeg-link.py" "$BUILD_SRC" "$WORK_ROOT" "$REPO_ROOT"
-python3 "$REPO_ROOT/ci/patch-quercus-engine-static.py"
-
-echo "==> cargo build (FFmpeg + OCIO built from source, static; first run is slow)"
+echo "==> cargo build (FFmpeg via FFMPEG_DIR + OCIO bundled)"
 export WGPU_BACKEND="${WGPU_BACKEND:-vulkan}"
-# 让 bootstrap FFmpeg prefix 的 -L 排在系统路径之前：否则链接器可能选中
-# /usr/lib 下非 PIC / 带额外依赖的系统静态库（freetype→png/brotli 等）。
-export RUSTFLAGS="${RUSTFLAGS:-} -L native=$QUERCUS_FFMPEG_CACHE/ffmpeg/lib"
 cargo build --release --manifest-path "$BUILD_SRC/Cargo.toml"
 
 BIN="$TARGET_DIR/release/oak-mcp"
@@ -67,12 +65,14 @@ BIN="$TARGET_DIR/release/oak-mcp"
 echo "==> --check"
 "$BIN" --check
 
-echo "==> verify hardware codecs (VAAPI / NVENC / NVDEC)"
-for enc in h264_vaapi hevc_vaapi h264_nvenc hevc_nvenc; do
-	grep -aq "$enc" "$BIN" || { echo "ERROR: $enc not compiled into $BIN" >&2; exit 1; }
+echo "==> verify hardware codecs (VAAPI / NVENC / NVDEC / QSV / AMF)"
+AVCODEC_LIB=$(ls "$BTBN_PREFIX"/lib/libavcodec.so.63* 2>/dev/null | head -n 1)
+[ -n "$AVCODEC_LIB" ] || { echo "ERROR: BtbN libavcodec not found" >&2; exit 1; }
+for enc in h264_vaapi hevc_vaapi h264_nvenc hevc_nvenc h264_qsv h264_amf; do
+	grep -aq "$enc" "$AVCODEC_LIB" || { echo "ERROR: $enc not compiled into libavcodec" >&2; exit 1; }
 done
-ldd "$BIN" | grep -q "libva.so" || { echo "ERROR: libva not linked (VAAPI disabled)" >&2; exit 1; }
-echo "==> hardware codecs present: VAAPI, NVENC, NVDEC"
+ldd "$BIN" | grep -q "libavcodec.so" || { echo "ERROR: libavcodec not linked" >&2; exit 1; }
+echo "==> hardware codecs present: VAAPI, NVENC, NVDEC, QSV, AMF"
 
 echo "==> stage bin/ + running libraries"
 rm -rf "$OUT_DIR"
