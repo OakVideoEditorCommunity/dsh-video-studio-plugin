@@ -113,8 +113,9 @@ mcp.json         ready-to-use MCP client configuration
 ## Build & release (GitHub Actions)
 
 - Three jobs build `oak-mcp` natively on `ubuntu-24.04`, `windows-latest` and `macos-15`:
-  Linux builds FFmpeg 9 from source; Windows uses BtbN FFmpeg 9 shared + conda-forge OCIO 2.5;
-  macOS uses Homebrew ffmpeg/opencolorio and bundles its dylibs into `lib/`.
+  Linux builds FFmpeg 9 from source; Windows uses BtbN FFmpeg 9 shared; macOS uses Homebrew
+  ffmpeg and bundles its dylibs into `lib/`. On every platform OpenColorIO is built from source
+  by the `ocio-sys` bundled feature (static), not from conda/Homebrew.
 - Pushing a `v*` tag triggers build → GitHub Release + npm publish (repository secret `NPM_TOKEN`).
 - `workflow_dispatch` only builds artifacts (no release/publish).
 

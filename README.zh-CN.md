@@ -111,8 +111,9 @@ mcp.json         可直接使用的 MCP 客户端配置
 ## 构建与发布（GitHub Actions）
 
 - 三个 job 分别在 `ubuntu-24.04`、`windows-latest`、`macos-15` 原生构建 `oak-mcp`：
-  Linux 从源码构建 FFmpeg 9；Windows 用 BtbN FFmpeg 9 shared + conda-forge OCIO 2.5；
-  macOS 用 Homebrew ffmpeg/opencolorio 并把 dylib 打包进 `lib/`；
+  Linux 从源码构建 FFmpeg 9；Windows 用 BtbN FFmpeg 9 shared；
+  macOS 用 Homebrew ffmpeg 并把 dylib 打包进 `lib/`；三平台的 OpenColorIO 都由
+  `ocio-sys` 的 bundled 特性从源码静态构建（不用 conda/Homebrew OCIO）；
 - 打 `v*` tag 触发构建 → GitHub Release + npm 发布（需仓库 secret `NPM_TOKEN`）；
 - `workflow_dispatch` 只构建产物、不发布。
 
