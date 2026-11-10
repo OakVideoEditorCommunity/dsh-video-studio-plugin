@@ -9,6 +9,7 @@ Creates <out-dir>/bin/<name> and <out-dir>/lib/*.dylib; rewrites references to
 lib dirs) and bundles them too. Ad-hoc re-signs every modified Mach-O (required
 on arm64).
 """
+import glob
 import hashlib
 import os
 import shutil
@@ -17,6 +18,11 @@ import sys
 
 SYSTEM_PREFIXES = ("/System/", "/usr/lib/", "/Library/Apple/")
 EXTRA_LIB_DIRS = ("/opt/homebrew/lib", "/usr/local/lib")
+# keg-only Homebrew formulae install their dylibs under opt/<formula>/lib,
+# which is not on the default /opt/homebrew/lib search path.
+for _root in ("/opt/homebrew/opt", "/usr/local/opt"):
+    if os.path.isdir(_root):
+        EXTRA_LIB_DIRS += tuple(sorted(glob.glob(os.path.join(_root, "*", "lib"))))
 
 
 def run(*args):
