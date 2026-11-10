@@ -55,6 +55,9 @@ jobs:
           UPSTREAM_SRC: ${{ github.workspace }}/upstream-src
           WORK_ROOT: ${{ runner.temp }}/oak-build
           OUT_DIR: ${{ runner.temp }}/oak-build/out/linux-x64
+          # bootstrap 的静态 freetype 关闭了 PNG 集成，但链接时仍可能选到系统
+          # libfreetype.a（其 sfnt 引用 libpng）；显式补 -lpng。
+          RUSTFLAGS: '-C link-arg=-lpng'
         run: bash ci/build-linux.sh
       - name: Save quercus FFmpeg bootstrap prefix
         if: always()
