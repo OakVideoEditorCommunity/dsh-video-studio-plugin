@@ -6,7 +6,7 @@
 #     --linux-binary <bin> [--linux-libs <dir>] \
 #     --windows-binary <exe> [--windows-dlls <dir>] \
 #     --macos-binary <bin> [--macos-libs <dir>] \
-#     --version 0.1.0
+#     --version 0.1.1
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
@@ -14,7 +14,7 @@ DIST="${DIST_DIR:-$ROOT/dist}"
 LINUX_BIN=""; LINUX_LIBS=""
 WINDOWS_BIN=""; WINDOWS_DLLS=""
 MACOS_BIN=""; MACOS_LIBS=""
-VERSION="0.1.0"
+VERSION="0.1.1"
 
 while [ $# -gt 0 ]; do
 	case "$1" in

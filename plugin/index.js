@@ -47,7 +47,7 @@ const PLATFORM_PACKAGES = {
 	'win32-x64': '@oakvideoeditor/oak-mcp-win32-x64',
 }
 /** Version of the binary this plugin build expects (kept in sync by CI). */
-const PACKAGE_VERSION = '0.1.0'
+const PACKAGE_VERSION = '0.1.1'
 const requireFromHere = createRequire(import.meta.url)
 
 /** Directory the MCP command expression resolves to (shared with install scripts). */

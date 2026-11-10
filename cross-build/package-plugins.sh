@@ -7,7 +7,7 @@
 #     --linux-binary  <path> [--linux-libs <dir>] \
 #     --windows-binary <path> [--windows-dlls <dir>] \
 #     --macos-binary  <path> [--macos-libs  <dir>] \
-#     --version       0.1.0
+#     --version       0.1.1
 #
 # 产物（$DIST，默认 <repo>/dist）：
 #   video-studio-linux-x86_64/    + .tar.gz
@@ -26,7 +26,7 @@ WINDOWS_BIN=""
 WINDOWS_DLLS=""
 MACOS_BIN=""
 MACOS_LIBS=""
-VERSION="0.1.0"
+VERSION="0.1.1"
 LINUX_DEPS=""
 WINDOWS_DEPS=""
 MACOS_DEPS=""

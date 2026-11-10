@@ -3,7 +3,7 @@
 #
 # 用法：
 #   ./cross-build/package-npm.sh \
-#     --plugin-src <bundle dir> --version 0.1.0 --out <dir> \
+#     --plugin-src <bundle dir> --version 0.1.1 --out <dir> \
 #     --linux-binary <bin> [--linux-libs <dir>] \
 #     --windows-binary <exe> [--windows-dlls <dir>] \
 #     --macos-binary <bin> [--macos-libs <dir>]
@@ -13,7 +13,7 @@
 set -euo pipefail
 
 PLUGIN_SRC=""
-VERSION="0.1.0"
+VERSION="0.1.1"
 OUT=""
 LINUX_BIN=""; LINUX_LIBS=""
 WINDOWS_BIN=""; WINDOWS_DLLS=""
@@ -52,6 +52,10 @@ platform_pkg() {
   "version": "${VERSION}",
   "description": "${desc}",
   "license": "GPL-3.0-or-later",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/OakVideoEditorCommunity/dsh-video-studio-plugin.git"
+  },
   "os": ["${os}"],
   "cpu": ["${cpu}"],
   "files": ["bin", "lib", "README.md"]
@@ -125,6 +129,10 @@ cat > "$D/package.json" <<EOF
   "version": "${VERSION}",
   "description": "MCP server for the Quercus non-linear video-editing engine (oak-mcp)",
   "license": "GPL-3.0-or-later",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/OakVideoEditorCommunity/dsh-video-studio-plugin.git"
+  },
   "type": "module",
   "bin": { "oak-mcp": "bin/oak-mcp.mjs" },
   "files": ["bin", "README.md"],

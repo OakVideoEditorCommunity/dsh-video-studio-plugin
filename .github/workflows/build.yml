@@ -155,9 +155,9 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: write
-      id-token: write
+      id-token: write # OIDC token for npm Trusted Publishing
     env:
-      HAS_NPM_TOKEN: ${{ secrets.NPM_TOKEN != '' }}
+      NPM_CONFIG_REGISTRY: https://registry.npmjs.org
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -224,10 +224,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          registry-url: https://registry.npmjs.org
-      - name: Upgrade npm (trusted publishing / provenance support)
+          # No registry-url on purpose: setup-node would write
+          # `//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}` to .npmrc,
+          # but Trusted Publishing must use the GitHub Actions OIDC token
+          # instead of a long-lived npm token.
+      - name: Upgrade npm (Trusted Publishing requires npm >= 11.5.1)
         if: startsWith(github.ref, 'refs/tags/v')
-        run: npm install -g npm@latest
+        run: npm install -g 'npm@^11.5.1'
       - name: Assemble npm packages
         if: startsWith(github.ref, 'refs/tags/v')
         shell: bash
@@ -239,14 +242,14 @@ jobs:
             --linux-binary "$A/linux-x64/bin/oak-mcp" --linux-libs "$A/linux-x64/lib" \
             --windows-binary "$A/windows-x64/oak-mcp.exe" --windows-dlls "$A/windows-x64" \
             --macos-binary "$A/macos-arm64/bin/oak-mcp" --macos-libs "$A/macos-arm64/lib"
-      - name: Publish to npm
+      - name: Publish to npm (Trusted Publishing / OIDC)
         if: startsWith(github.ref, 'refs/tags/v')
         shell: bash
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_CONFIG_REGISTRY: https://registry.npmjs.org
         run: |
           set -euo pipefail
+          # No NODE_AUTH_TOKEN: npm exchanges the GitHub Actions OIDC token
+          # (id-token: write) for short-lived publish credentials.
+          # Provenance is generated automatically by Trusted Publishing.
           for pkg in oak-mcp-darwin-arm64 oak-mcp-linux-x64 oak-mcp-win32-x64 oak-mcp oak-deepseek-plugin; do
             NAME=$(node -p "require('$RUNNER_TEMP/npm/$pkg/package.json').name")
             if npm view "$NAME@$VERSION" version >/dev/null 2>&1; then

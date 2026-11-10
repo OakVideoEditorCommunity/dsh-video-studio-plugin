@@ -114,7 +114,11 @@ mcp.json         可直接使用的 MCP 客户端配置
   三平台的 FFmpeg 9（静态）与 OpenColorIO（静态）都由 quercus bootstrap /
   `ocio-sys` bundled 机制从源码构建（不用系统 FFmpeg、BtbN、conda 或 Homebrew OCIO）；
   CI 会缓存构建前缀，重复构建很快；
-- 打 `v*` tag 触发构建 → GitHub Release + npm 发布（需仓库 secret `NPM_TOKEN`）；
+- 打 `v*` tag 触发构建 → GitHub Release + npm 发布，npm 发布走
+  [Trusted Publishing](https://docs.npmjs.com/trusted-publishers)（GitHub Actions OIDC，
+  `id-token: write`，不再需要 `NPM_TOKEN` secret）；npmjs.com 上需为 5 个
+  `@oakvideoeditor/*` 包分别配置 trusted publisher：仓库
+  `OakVideoEditorCommunity/dsh-video-studio-plugin`、workflow `build.yml`、环境留空；
 - `workflow_dispatch` 只构建产物、不发布。
 
 本地复现可参考 `cross-build/README.md` 与各 `ci/build-*.sh`。

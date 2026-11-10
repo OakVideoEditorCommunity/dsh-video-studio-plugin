@@ -61,7 +61,7 @@ cross-build/
 `package-plugins.sh`：
 
 ```bash
-bash cross-build/package-plugins.sh --plugin-src plugin --version 0.1.0 \
+bash cross-build/package-plugins.sh --plugin-src plugin --version 0.1.1 \
   --linux-binary <bin>  --linux-libs <dir> \
   --windows-binary <exe> --windows-dlls <dir> \
   --macos-binary <bin>  --macos-libs <dir>
@@ -84,13 +84,16 @@ DSH 插件首次激活时由 Host 半把平台二进制复制到用户目录（W
 `.github/workflows/build.yml`：
 
 - `push tag v*` → 三平台构建 → GitHub Release（插件包 + 纯 MCP 包 + SHA256SUMS）
-  → npm 发布（需仓库 secret `NPM_TOKEN`）；
+  → npm 发布（Trusted Publishing：GitHub Actions OIDC + `id-token: write`，无需 `NPM_TOKEN`）；
 - `workflow_dispatch` → 只构建并上传 artifacts，不发布。
+
+npmjs.com 上需为 5 个 `@oakvideoeditor/*` 包各配置一个 trusted publisher：
+仓库 `OakVideoEditorCommunity/dsh-video-studio-plugin`、workflow 文件名 `build.yml`、环境留空。
 
 发布流程：本地把 tag 打到已通过 CI 的 commit 上，例如
 
 ```bash
-git tag -a v0.1.0 -m "v0.1.0" && git push origin v0.1.0
+git tag -a v0.1.1 -m "v0.1.1" && git push origin v0.1.1
 ```
 
 ## 验证记录

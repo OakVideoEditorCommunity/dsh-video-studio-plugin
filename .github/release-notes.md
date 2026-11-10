@@ -1,9 +1,15 @@
-# v0.1.0 — DeepSeek Harness 视频剪辑插件（Windows / Linux / macOS arm64）
+# v0.1.1 — DeepSeek Harness 视频剪辑插件（Windows / Linux / macOS arm64）
 
-首个公开版本：把 [Quercus](https://github.com/OakVideoEditorCommunity/quercus-engine)
+把 [Quercus](https://github.com/OakVideoEditorCommunity/quercus-engine)
 剪辑引擎的 MCP 服务器 `oak-mcp` 接入
 [DeepSeek Harness](https://deepseek-harness.github.io/deepseek-harness/)，
 提供 `mcp__oak__*` 工具与 GUI 侧栏「视频预览」面板。
+
+## 变更（0.1.1）
+
+- npm 发布改用 **Trusted Publishing**（GitHub Actions OIDC，`id-token: write`），
+  不再依赖 `NPM_TOKEN` secret，npm 包自动附带 provenance 证明；
+- 版本号升至 `0.1.1`，npm 发布包补充 `repository` 元数据。
 
 ## 下载
 

@@ -116,7 +116,11 @@ mcp.json         ready-to-use MCP client configuration
   FFmpeg 9 (static) and OpenColorIO (static) are built from source on every platform by the
   quercus bootstrap / `ocio-sys` bundled mechanism; no external FFmpeg/OCIO packages are used.
   CI caches the built prefixes so repeat runs are fast.
-- Pushing a `v*` tag triggers build → GitHub Release + npm publish (repository secret `NPM_TOKEN`).
+- Pushing a `v*` tag triggers build → GitHub Release + npm publish through
+  [npm Trusted Publishing](https://docs.npmjs.com/trusted-publishers) (GitHub Actions OIDC,
+  `id-token: write`; no `NPM_TOKEN` secret). Each of the five `@oakvideoeditor/*` packages
+  must have a trusted publisher configured on npmjs.com: repository
+  `OakVideoEditorCommunity/dsh-video-studio-plugin`, workflow `build.yml`, environment empty.
 - `workflow_dispatch` only builds artifacts (no release/publish).
 
 To reproduce locally see `cross-build/README.md` and the `ci/build-*.sh` scripts.

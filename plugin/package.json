@@ -1,9 +1,13 @@
 {
   "name": "@oakvideoeditor/oak-deepseek-plugin",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "DeepSeek Harness video-studio plugin: connects the oak MCP server (Quercus engine) and previews/plays exported cuts in the GUI sidebar.",
   "license": "GPL-3.0-or-later",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/OakVideoEditorCommunity/dsh-video-studio-plugin.git"
+  },
   "exports": {
     ".": "./index.js",
     "./client": "./client.js",
@@ -37,8 +41,8 @@
     }
   },
   "optionalDependencies": {
-    "@oakvideoeditor/oak-mcp-darwin-arm64": "0.1.0",
-    "@oakvideoeditor/oak-mcp-linux-x64": "0.1.0",
-    "@oakvideoeditor/oak-mcp-win32-x64": "0.1.0"
+    "@oakvideoeditor/oak-mcp-darwin-arm64": "0.1.1",
+    "@oakvideoeditor/oak-mcp-linux-x64": "0.1.1",
+    "@oakvideoeditor/oak-mcp-win32-x64": "0.1.1"
   }
 }
