@@ -33,6 +33,7 @@ command -v pkg-config >/dev/null || brew install pkgconf
 command -v autoconf >/dev/null || brew install autoconf automake libtool autoconf-archive gperf
 
 echo "==> upstream copy"
+mkdir -p "$WORK_ROOT"
 rm -rf "$BUILD_SRC"
 cp -a "$UPSTREAM_SRC" "$BUILD_SRC"
 export CARGO_TARGET_DIR="$TARGET_DIR"
