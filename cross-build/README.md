@@ -86,6 +86,10 @@ DSH 插件首次激活时由 Host 半把平台二进制复制到用户目录（W
 - `push tag v*` → 三平台构建 → GitHub Release（插件包 + 纯 MCP 包 + SHA256SUMS）
   → npm 发布（Trusted Publishing：GitHub Actions OIDC + `id-token: write`，无需 `NPM_TOKEN`）；
 - `workflow_dispatch` → 只构建并上传 artifacts，不发布。
+- 发布产物带硬件编解码：Linux 为 VAAPI/VDPAU/NVENC/NVDEC（`libva-dev`、
+  `libvdpau-dev`、`libdrm-dev`、`nv-codec-headers`），Windows 为
+  D3D11VA/DXVA2/MediaFoundation + NVENC/NVDEC（vcpkg `nvcodec`），macOS 为
+  VideoToolbox；FFmpeg 前缀缓存 key 随特性变更而升级，避免复用旧缓存。
 
 npmjs.com 上需为 5 个 `@oakvideoeditor/*` 包各配置一个 trusted publisher：
 仓库 `OakVideoEditorCommunity/dsh-video-studio-plugin`、workflow 文件名 `build.yml`、环境留空。

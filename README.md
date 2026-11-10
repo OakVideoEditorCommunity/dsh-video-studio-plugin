@@ -123,6 +123,18 @@ mcp.json         ready-to-use MCP client configuration
   `OakVideoEditorCommunity/dsh-video-studio-plugin`, workflow `build.yml`, environment empty.
 - `workflow_dispatch` only builds artifacts (no release/publish).
 
+### Hardware codecs in release binaries
+
+- Linux: VAAPI + VDPAU + NVENC/NVDEC/CUDA (`libva-dev`, `libvdpau-dev`, `libdrm-dev`,
+  pinned `nv-codec-headers`); verified in CI by requiring `h264_vaapi`, `h264_nvenc`,
+  `h264_vdpau` and a `libva.so` link in the produced binary.
+- Windows: D3D11VA/DXVA2/MediaFoundation (vcpkg defaults) + NVENC/NVDEC/CUDA
+  (pinned `nvcodec` vcpkg feature); verified in CI by string-checking the exe.
+- macOS: VideoToolbox (H.264/HEVC), always enabled by the FFmpeg bootstrap; verified in CI.
+- Note: the engine still opens its default software encoder for **export** (`libx264`),
+  so hardware paths speed up decoding/preview (and proxy generation via an external
+  `ffmpeg`); hardware-encoded export needs an engine change.
+
 To reproduce locally see `cross-build/README.md` and the `ci/build-*.sh` scripts.
 
 ## Known limitations (upstream Quercus engine)

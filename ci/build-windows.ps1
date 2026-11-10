@@ -67,6 +67,20 @@ if (Test-Path $BuildSrc) { Remove-Item -Recurse -Force $BuildSrc }
 Copy-Item -Recurse -Force $Upstream $BuildSrc
 $env:CARGO_TARGET_DIR = $TargetDir
 
+# quercus-ffmpeg-bootstrap 的 vcpkg 特性列表是硬编码的；先 cargo fetch 把
+# crate 解包到 registry，再原地补上 nvcodec（NVENC/NVDEC/CUDA）。
+Write-Host '==> cargo fetch (registry sources, for the bootstrap patch)'
+Push-Location $BuildSrc
+try {
+    cargo fetch
+    if ($LASTEXITCODE -ne 0) { throw "cargo fetch failed: $LASTEXITCODE" }
+} finally {
+    Pop-Location
+}
+Write-Host '==> patch quercus-ffmpeg-bootstrap: vcpkg ffmpeg + nvcodec'
+python "$RepoRoot\ci\patch-quercus-ffmpeg-bootstrap.py"
+if ($LASTEXITCODE -ne 0) { throw "quercus-ffmpeg-bootstrap patch failed: $LASTEXITCODE" }
+
 Write-Host '==> cargo build (FFmpeg via vcpkg + OCIO bundled; first run is slow)'
 Push-Location $BuildSrc
 try {
@@ -78,6 +92,13 @@ try {
 
 $Bin = Join-Path $TargetDir 'release\oak-mcp.exe'
 if (-not (Test-Path $Bin)) { throw "binary missing: $Bin" }
+
+# 硬件编解码检查：字符串表里必须有 NVENC/NVDEC/Media Foundation 相关编码器。
+$asText = [System.Text.Encoding]::ASCII.GetString([System.IO.File]::ReadAllBytes($Bin))
+foreach ($enc in @('h264_nvenc', 'hevc_nvenc', 'h264_mf', 'd3d11va')) {
+    if (-not $asText.Contains($enc)) { throw "hardware codec '$enc' missing from $Bin" }
+}
+Write-Host '==> hardware codecs present: h264_nvenc, hevc_nvenc, h264_mf, d3d11va'
 
 Write-Host '==> --check (非致命：runner 无 GPU 时渲染初始化可能失败)'
 & $Bin --check

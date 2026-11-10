@@ -44,12 +44,20 @@ jobs:
             libxkbcommon-dev libxkbcommon-x11-dev libudev-dev \
             libgl-dev libglvnd-dev libgl1-mesa-dev libegl-dev \
             libfontconfig1-dev libfreetype-dev \
+            libva-dev libva-drm2 libvdpau-dev libvdpau1 libdrm-dev \
             libvulkan1 mesa-vulkan-drivers libgl1-mesa-dri libegl1 libgl1 libglx-mesa0 mesa-utils xvfb
+      - name: Install nv-codec-headers (ffnvcodec for NVENC/NVDEC/CUDA)
+        run: |
+          git clone --depth 1 --branch n13.0.19.0 \
+            https://github.com/FFmpeg/nv-codec-headers.git "$RUNNER_TEMP/nv-codec-headers"
+          sudo make -C "$RUNNER_TEMP/nv-codec-headers" install PREFIX=/usr/local
+          echo "PKG_CONFIG_PATH=/usr/local/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}" >> "$GITHUB_ENV"
+          pkg-config --modversion ffnvcodec
       - name: Restore quercus FFmpeg bootstrap prefix
         uses: actions/cache/restore@v4
         with:
           path: ${{ runner.temp }}/oak-build/quercus-ffmpeg/ffmpeg
-          key: quercus-ffmpeg-linux-x64-v1
+          key: quercus-ffmpeg-linux-x64-v2-hw
       - name: Build oak-mcp
         env:
           UPSTREAM_SRC: ${{ github.workspace }}/upstream-src
@@ -61,7 +69,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: ${{ runner.temp }}/oak-build/quercus-ffmpeg/ffmpeg
-          key: quercus-ffmpeg-linux-x64-v1
+          key: quercus-ffmpeg-linux-x64-v2-hw
       - name: Upload binary
         uses: actions/upload-artifact@v4
         with:
@@ -89,7 +97,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: ${{ runner.temp }}/oak-build/quercus-ffmpeg/vcpkg/installed
-          key: quercus-ffmpeg-win64-vcpkg-v1
+          key: quercus-ffmpeg-win64-vcpkg-v2-nvcodec
       - name: Build oak-mcp
         shell: pwsh
         env:
@@ -105,7 +113,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: ${{ runner.temp }}/oak-build/quercus-ffmpeg/vcpkg/installed
-          key: quercus-ffmpeg-win64-vcpkg-v1
+          key: quercus-ffmpeg-win64-vcpkg-v2-nvcodec
       - name: Upload binary
         uses: actions/upload-artifact@v4
         with:

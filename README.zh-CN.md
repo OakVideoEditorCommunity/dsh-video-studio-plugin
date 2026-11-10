@@ -121,6 +121,17 @@ mcp.json         可直接使用的 MCP 客户端配置
   `OakVideoEditorCommunity/dsh-video-studio-plugin`、workflow `build.yml`、环境留空；
 - `workflow_dispatch` 只构建产物、不发布。
 
+### 发布产物的硬件编解码
+
+- Linux：VAAPI + VDPAU + NVENC/NVDEC/CUDA（`libva-dev`、`libvdpau-dev`、`libdrm-dev`，
+  以及固定版本的 `nv-codec-headers`）；CI 用 `h264_vaapi`、`h264_nvenc`、`h264_vdpau`
+  字符串和 `libva.so` 动态链接做校验；
+- Windows：D3D11VA/DXVA2/MediaFoundation（vcpkg 默认）+ NVENC/NVDEC/CUDA
+  （固定版本的 `nvcodec` vcpkg 特性）；CI 对 exe 做字符串校验；
+- macOS：VideoToolbox（H.264/HEVC），FFmpeg bootstrap 默认启用；CI 做字符串校验；
+- 注意：引擎**导出**时仍打开默认软件编码器（`libx264`），硬件路径加速的是解码/预览
+  （以及经由外部 `ffmpeg` 的代理生成）；硬件编码导出需要改引擎。
+
 本地复现可参考 `cross-build/README.md` 与各 `ci/build-*.sh`。
 
 ## 已知限制（上游 Quercus 引擎）

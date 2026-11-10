@@ -45,6 +45,14 @@ BIN="$TARGET_DIR/release/oak-mcp"
 echo "==> --check"
 "$BIN" --check
 
+echo "==> verify hardware codecs (VAAPI / VDPAU / NVENC / NVDEC)"
+for enc in h264_vaapi hevc_vaapi h264_nvenc hevc_nvenc h264_vdpau; do
+	grep -aq "$enc" "$BIN" || { echo "ERROR: $enc not compiled into $BIN" >&2; exit 1; }
+done
+ldd "$BIN" | grep -q "libva.so" || { echo "ERROR: libva not linked (VAAPI disabled)" >&2; exit 1; }
+ldd "$BIN" | grep -q "libvdpau.so" || { echo "ERROR: libvdpau not linked (VDPAU disabled)" >&2; exit 1; }
+echo "==> hardware codecs present: VAAPI, VDPAU, NVENC, NVDEC (CUDA/ffnvcodec)"
+
 echo "==> stage bin/ + running libraries"
 rm -rf "$OUT_DIR"
 mkdir -p "$OUT_DIR/bin" "$OUT_DIR/lib"
