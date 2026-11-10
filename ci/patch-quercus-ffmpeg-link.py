@@ -3,12 +3,15 @@
 
 Upstream force-links non-PIC `/usr/lib/.../*.a` archives (bz2, lzma, z, asound,
 stdc++, ...) into the rlib. That breaks linking the shared `libquercus_engine.so`
-cdylib (`relocation R_X86_64_PC32 ... recompile with -fPIC`). The patch is applied
-to a copy of the crate; example-mcp then picks it up through `[patch.crates-io]`.
+cdylib (`relocation R_X86_64_PC32 ... recompile with -fPIC`).
+
+The patch is applied IN PLACE to the crate in the cargo registry: the bootstrap
+crate locates its vendored FFmpeg tooling by looking at CARGO_MANIFEST_DIR of the
+running build script, so an out-of-tree `[patch.crates-io]` copy would break the
+`quercus-ffmpeg-bootstrap` lookup (it expects the registry sibling layout).
 
 Usage: patch-quercus-ffmpeg-link.py <upstream-dir> <work-dir> <repo-root>
-Writes <work-dir>/crates/quercus-ffmpeg-link-patched and appends the
-[patch.crates-io] section to <upstream-dir>/Cargo.toml.
+<work-dir> is unused; <upstream-dir> is unused.
 """
 import glob
 import os
@@ -23,29 +26,17 @@ def main():
     if len(sys.argv) != 4:
         print(__doc__)
         return 2
-    upstream, work, repo = (os.path.abspath(p) for p in sys.argv[1:4])
+    repo = os.path.abspath(sys.argv[3])
     candidates = sorted(glob.glob(os.path.expanduser(f"~/.cargo/registry/src/*/{CRATE}")))
     if not candidates:
         print(f"error: {CRATE} not in cargo registry (run cargo fetch first)", file=sys.stderr)
         return 1
-    patched = os.path.join(work, "crates", "quercus-ffmpeg-link-patched")
-    shutil.rmtree(patched, ignore_errors=True)
-    os.makedirs(os.path.dirname(patched), exist_ok=True)
-    shutil.copytree(candidates[0], patched)
-
+    print(f"patching {candidates[0]} in place")
     patch_file = os.path.join(repo, "ci", "patches", "quercus-ffmpeg-link-linux-dynamic.patch")
-    result = subprocess.run(["patch", "-p1", "-i", patch_file], cwd=patched)
+    result = subprocess.run(["patch", "-p1", "-i", patch_file], cwd=candidates[0])
     if result.returncode != 0:
         print("error: applying quercus-ffmpeg-link patch failed", file=sys.stderr)
         return result.returncode
-
-    cargo_toml = os.path.join(upstream, "Cargo.toml")
-    with open(cargo_toml, encoding="utf-8") as fh:
-        content = fh.read()
-    if "[patch.crates-io]" not in content:
-        with open(cargo_toml, "a", encoding="utf-8") as fh:
-            fh.write(f"\n[patch.crates-io]\nquercus-ffmpeg-link = {{ path = {patched!r} }}\n")
-    print(f"patched quercus-ffmpeg-link -> {patched}")
     return 0
 
 
