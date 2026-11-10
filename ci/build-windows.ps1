@@ -119,7 +119,8 @@ if (Test-Path $dumpbin) {
         'mfuuid.dll', 'mfplat.dll', 'mf.dll', 'dxgi.dll', 'd3d11.dll', 'd3d12.dll', 'vulkan-1.dll'
     )
     $missing = @()
-    foreach ($pe in (Get-ChildItem $OutDir -Filter '*.exe') + (Get-ChildItem $OutDir -Filter '*.dll')) {
+    $pes = @(Get-ChildItem $OutDir -Filter '*.exe') + @(Get-ChildItem $OutDir -Filter '*.dll')
+    foreach ($pe in $pes) {
         $deps = & $dumpbin /nologo /dependents $pe.FullName 2>$null | Select-String -Pattern '^\s+([\w.\-]+\.(?:dll|drv))\s*$' -AllMatches
         foreach ($m in $deps.Matches) {
             $name = $m.Groups[1].Value.ToLower()

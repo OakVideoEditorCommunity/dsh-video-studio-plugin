@@ -128,12 +128,23 @@ jobs:
           repository: ${{ env.UPSTREAM_REPO }}
           ref: ${{ env.UPSTREAM_REF }}
           path: upstream-src
+      - name: Restore quercus FFmpeg bootstrap prefix
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/oak-build/quercus-ffmpeg/ffmpeg
+          key: quercus-ffmpeg-macos-arm64-v1
       - name: Build oak-mcp
         env:
           UPSTREAM_SRC: ${{ github.workspace }}/upstream-src
           WORK_ROOT: ${{ runner.temp }}/oak-build
           OUT_DIR: ${{ runner.temp }}/oak-build/out/macos-arm64
         run: bash ci/build-macos.sh
+      - name: Save quercus FFmpeg bootstrap prefix
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/oak-build/quercus-ffmpeg/ffmpeg
+          key: quercus-ffmpeg-macos-arm64-v1
       - name: Upload binary
         uses: actions/upload-artifact@v4
         with:
