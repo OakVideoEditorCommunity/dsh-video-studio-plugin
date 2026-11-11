@@ -41,11 +41,16 @@ BUILD_FFMPEG="$BUILD_SRC/scripts/ffmpeg/build-ffmpeg.sh"
 [ -f "$BUILD_FFMPEG" ] || BUILD_FFMPEG="$BUILD_SRC/tooling/ffmpeg/build-ffmpeg.sh"
 [ -f "$BUILD_FFMPEG" ] || { echo "ERROR: upstream FFmpeg build script not found" >&2; exit 1; }
 
-echo "==> build FFmpeg (source, shared, VideoToolbox)"
-if [ ! -f "$BUILD_SRC/.cache/ffmpeg/lib/libavcodec.dylib" ]; then
+FFMPEG_CACHE_DIR="$WORK_ROOT/ffmpeg-macos"
+echo "==> FFmpeg (source, shared, VideoToolbox)"
+if [ -f "$FFMPEG_CACHE_DIR/lib/libavcodec.dylib" ]; then
+	echo "==> reusing cached FFmpeg prefix: $FFMPEG_CACHE_DIR"
+else
 	(cd "$BUILD_SRC" && bash "$BUILD_FFMPEG" --shared)
+	rm -rf "$FFMPEG_CACHE_DIR"
+	cp -a "$BUILD_SRC/.cache/ffmpeg" "$FFMPEG_CACHE_DIR"
 fi
-export FFMPEG_DIR="$BUILD_SRC/.cache/ffmpeg"
+export FFMPEG_DIR="$FFMPEG_CACHE_DIR"
 export PKG_CONFIG_PATH="$FFMPEG_DIR/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
 [ -f "$FFMPEG_DIR/lib/libavcodec.dylib" ] || { echo "ERROR: FFMPEG_DIR is incomplete: $FFMPEG_DIR" >&2; exit 1; }
 
