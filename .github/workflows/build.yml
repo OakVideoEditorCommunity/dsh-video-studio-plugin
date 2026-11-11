@@ -10,7 +10,7 @@ concurrency:
 
 env:
   UPSTREAM_REPO: OakVideoEditorCommunity/example-mcp
-  UPSTREAM_REF: c64df239957ed2c8666604696caeffabfbe78afb
+  UPSTREAM_REF: f9acf8b0215d36ecfc4dbe8f7ff86b065c54bae7
 
 jobs:
   linux-x64:
