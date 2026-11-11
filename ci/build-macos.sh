@@ -50,7 +50,12 @@ else
 	rm -rf "$FFMPEG_CACHE_DIR"
 	cp -a "$BUILD_SRC/.cache/ffmpeg" "$FFMPEG_CACHE_DIR"
 fi
-export FFMPEG_DIR="$FFMPEG_CACHE_DIR"
+# The binary's install names point at .cache/ffmpeg; keep that path valid
+# even when the prefix came from the cache.
+mkdir -p "$BUILD_SRC/.cache"
+rm -rf "$BUILD_SRC/.cache/ffmpeg"
+ln -s "$FFMPEG_CACHE_DIR" "$BUILD_SRC/.cache/ffmpeg"
+export FFMPEG_DIR="$BUILD_SRC/.cache/ffmpeg"
 export PKG_CONFIG_PATH="$FFMPEG_DIR/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
 [ -f "$FFMPEG_DIR/lib/libavcodec.dylib" ] || { echo "ERROR: FFMPEG_DIR is incomplete: $FFMPEG_DIR" >&2; exit 1; }
 
