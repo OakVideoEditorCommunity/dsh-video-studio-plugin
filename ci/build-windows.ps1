@@ -20,9 +20,7 @@ $BuildSrc = Join-Path $WorkRoot 'example-mcp-build'
 $TargetDir = Join-Path $WorkRoot 'target-windows'
 New-Item -ItemType Directory -Force -Path $WorkRoot | Out-Null
 
-# OCIO 静态构建 + bindgen 能看到 MSVC / Windows SDK 头文件
-$env:OCIO_RS_LINK = 'static'
-$env:OCIO_RS_ENABLE_REAL = '1'
+# bindgen 能看到 MSVC / Windows SDK 头文件；OCIO 使用 Quercus 默认的 bundled 构建
 $env:LIBCLANG_PATH = 'C:\Program Files\LLVM\bin'
 if ($env:INCLUDE) {
     $includes = $env:INCLUDE.Split(';') | Where-Object { $_ } | ForEach-Object { "-I$_" }
@@ -95,15 +93,6 @@ Write-Host '==> upstream copy'
 if (Test-Path $BuildSrc) { Remove-Item -Recurse -Force $BuildSrc }
 Copy-Item -Recurse -Force $Upstream $BuildSrc
 $env:CARGO_TARGET_DIR = $TargetDir
-
-Write-Host '==> update quercus-engine-rs to 0.7.1'
-Push-Location $BuildSrc
-try {
-    cargo update -p quercus-engine-rs --precise 0.7.1
-    if ($LASTEXITCODE -ne 0) { throw "cargo update failed: $LASTEXITCODE" }
-} finally {
-    Pop-Location
-}
 
 Write-Host '==> cargo build (FFmpeg via BtbN shared + OCIO bundled)'
 Push-Location $BuildSrc

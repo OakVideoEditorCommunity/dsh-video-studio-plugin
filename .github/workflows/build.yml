@@ -17,9 +17,7 @@ concurrency:
 
 env:
   UPSTREAM_REPO: OakVideoEditorCommunity/example-mcp
-  # Refresh this to the example-mcp commit that bumps quercus-engine-rs to
-  # 0.7.1 once Quercus 0.7.1 is published.
-  UPSTREAM_REF: 9a58b3b57874659f9213b3e191e6be3df1726f92
+  UPSTREAM_REF: c64df239957ed2c8666604696caeffabfbe78afb
 
 jobs:
   linux-x64:

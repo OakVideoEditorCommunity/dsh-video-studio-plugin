@@ -49,13 +49,11 @@ export FFMPEG_DIR="$BUILD_SRC/.cache/ffmpeg"
 export PKG_CONFIG_PATH="$FFMPEG_DIR/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
 [ -f "$FFMPEG_DIR/lib/libavcodec.dylib" ] || { echo "ERROR: FFMPEG_DIR is incomplete: $FFMPEG_DIR" >&2; exit 1; }
 
-echo "==> update quercus-engine-rs to 0.7.1"
-cargo update --manifest-path "$BUILD_SRC/Cargo.toml" -p quercus-engine-rs --precise 0.7.1
+echo "==> cargo fetch + bundled OCIO include fix"
+cargo fetch --manifest-path "$BUILD_SRC/Cargo.toml"
+bash "$BUILD_SRC/scripts/fix-ocio-bundled.sh"
 
-echo "==> cargo build (FFmpeg via FFMPEG_DIR + bundled OCIO)"
-export OCIO_RS_LINK=static
-export OCIO_RS_ENABLE_REAL=1
-export CXXFLAGS="${CXXFLAGS:-} -include cstdint"
+echo "==> cargo build (FFmpeg via FFMPEG_DIR + default OCIO)"
 cargo build --release --manifest-path "$BUILD_SRC/Cargo.toml"
 
 BIN="$TARGET_DIR/release/oak-mcp"

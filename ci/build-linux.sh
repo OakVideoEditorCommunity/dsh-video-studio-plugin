@@ -55,15 +55,12 @@ export PKG_CONFIG_PATH="$BTBN_PREFIX/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFI
 export LD_LIBRARY_PATH="$BTBN_PREFIX/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 echo "==> FFmpeg: BtbN 9.0.2 shared -> $BTBN_PREFIX"
 
-echo "==> update quercus-engine-rs to 0.7.1"
-cargo update --manifest-path "$BUILD_SRC/Cargo.toml" -p quercus-engine-rs --precise 0.7.1
+echo "==> cargo fetch + bundled OCIO include fix"
+cargo fetch --manifest-path "$BUILD_SRC/Cargo.toml"
+bash "$BUILD_SRC/scripts/fix-ocio-bundled.sh"
 
 echo "==> cargo build (FFmpeg via FFMPEG_DIR + bundled OCIO)"
 export WGPU_BACKEND="${WGPU_BACKEND:-vulkan}"
-export OCIO_RS_LINK=static
-export OCIO_RS_ENABLE_REAL=1
-# Bundled OCIO's yaml-cpp needs <cstdint> with GCC >= 13 (upstream README).
-export CXXFLAGS="${CXXFLAGS:-} -include cstdint"
 cargo build --release --manifest-path "$BUILD_SRC/Cargo.toml"
 
 BIN="$TARGET_DIR/release/oak-mcp"
