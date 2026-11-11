@@ -73,8 +73,11 @@ echo "==> --check (bundled binary, no Homebrew dependency)"
 "$OUT_DIR/bin/oak-mcp" --check
 
 echo "==> verify hardware codecs (VideoToolbox)"
+AVCODEC_DYLIB=$(ls "$FFMPEG_DIR"/lib/libavcodec*.dylib 2>/dev/null | head -n 1)
+[ -n "$AVCODEC_DYLIB" ] || { echo "ERROR: FFmpeg libavcodec dylib not found" >&2; exit 1; }
 for enc in h264_videotoolbox hevc_videotoolbox; do
-	grep -aq "$enc" "$OUT_DIR/bin/oak-mcp" || { echo "ERROR: $enc not compiled into oak-mcp" >&2; exit 1; }
+	grep -aq "$enc" "$AVCODEC_DYLIB" || { echo "ERROR: $enc not compiled into libavcodec" >&2; exit 1; }
 done
+otool -L "$OUT_DIR/bin/oak-mcp" | grep -q "libavcodec" || { echo "ERROR: libavcodec not linked" >&2; exit 1; }
 echo "==> hardware codecs present: VideoToolbox (H.264/HEVC)"
 echo "==> staged -> $OUT_DIR"
