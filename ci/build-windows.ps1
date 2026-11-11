@@ -96,6 +96,15 @@ if (Test-Path $BuildSrc) { Remove-Item -Recurse -Force $BuildSrc }
 Copy-Item -Recurse -Force $Upstream $BuildSrc
 $env:CARGO_TARGET_DIR = $TargetDir
 
+Write-Host '==> update quercus-engine-rs to 0.7.1'
+Push-Location $BuildSrc
+try {
+    cargo update -p quercus-engine-rs --precise 0.7.1
+    if ($LASTEXITCODE -ne 0) { throw "cargo update failed: $LASTEXITCODE" }
+} finally {
+    Pop-Location
+}
+
 Write-Host '==> cargo build (FFmpeg via BtbN shared + OCIO bundled)'
 Push-Location $BuildSrc
 try {

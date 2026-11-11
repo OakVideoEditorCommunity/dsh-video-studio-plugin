@@ -41,17 +41,21 @@ BUILD_FFMPEG="$BUILD_SRC/scripts/ffmpeg/build-ffmpeg.sh"
 [ -f "$BUILD_FFMPEG" ] || BUILD_FFMPEG="$BUILD_SRC/tooling/ffmpeg/build-ffmpeg.sh"
 [ -f "$BUILD_FFMPEG" ] || { echo "ERROR: upstream FFmpeg build script not found" >&2; exit 1; }
 
-echo "==> build FFmpeg (source, VideoToolbox)"
-if [ ! -f "$BUILD_SRC/.cache/ffmpeg/lib/libavcodec.a" ]; then
-	(cd "$BUILD_SRC" && bash "$BUILD_FFMPEG")
+echo "==> build FFmpeg (source, shared, VideoToolbox)"
+if [ ! -f "$BUILD_SRC/.cache/ffmpeg/lib/libavcodec.dylib" ]; then
+	(cd "$BUILD_SRC" && bash "$BUILD_FFMPEG" --shared)
 fi
 export FFMPEG_DIR="$BUILD_SRC/.cache/ffmpeg"
 export PKG_CONFIG_PATH="$FFMPEG_DIR/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
-[ -f "$FFMPEG_DIR/lib/libavcodec.a" ] || { echo "ERROR: FFMPEG_DIR is incomplete: $FFMPEG_DIR" >&2; exit 1; }
+[ -f "$FFMPEG_DIR/lib/libavcodec.dylib" ] || { echo "ERROR: FFMPEG_DIR is incomplete: $FFMPEG_DIR" >&2; exit 1; }
 
-echo "==> cargo build (FFmpeg via FFMPEG_DIR + OCIO bundled)"
+echo "==> update quercus-engine-rs to 0.7.1"
+cargo update --manifest-path "$BUILD_SRC/Cargo.toml" -p quercus-engine-rs --precise 0.7.1
+
+echo "==> cargo build (FFmpeg via FFMPEG_DIR + bundled OCIO)"
 export OCIO_RS_LINK=static
 export OCIO_RS_ENABLE_REAL=1
+export CXXFLAGS="${CXXFLAGS:-} -include cstdint"
 cargo build --release --manifest-path "$BUILD_SRC/Cargo.toml"
 
 BIN="$TARGET_DIR/release/oak-mcp"
