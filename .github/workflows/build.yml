@@ -16,7 +16,6 @@ jobs:
   linux-x64:
     name: Linux x86_64
     runs-on: ubuntu-24.04
-    timeout-minutes: 240
     steps:
       - uses: actions/checkout@v4
       - name: Checkout upstream example-mcp
@@ -78,7 +77,6 @@ jobs:
   windows-x64:
     name: Windows x86_64
     runs-on: windows-latest
-    timeout-minutes: 240
     steps:
       - uses: actions/checkout@v4
       - name: Checkout upstream example-mcp
@@ -133,7 +131,6 @@ jobs:
   macos-arm64:
     name: macOS arm64
     runs-on: macos-latest
-    timeout-minutes: 240
     steps:
       - uses: actions/checkout@v4
       - name: Checkout upstream example-mcp
