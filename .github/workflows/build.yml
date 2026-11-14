@@ -207,6 +207,21 @@ jobs:
           VERSION="${GITHUB_REF_NAME#v}"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          # npm refuses to publish a prerelease version without an explicit
+          # dist-tag. Map the prerelease channel (0.1.2-alpha -> alpha), and
+          # fall back to "next" for unknown/numeric prerelease identifiers.
+          NPM_TAG="latest"
+          case "$VERSION" in
+            *-*)
+              PRE="${VERSION#*-}"
+              PRE="${PRE%%.*}"
+              case "$PRE" in
+                alpha|beta|rc|next) NPM_TAG="$PRE" ;;
+                *) NPM_TAG="next" ;;
+              esac
+              ;;
+          esac
+          echo "NPM_TAG=$NPM_TAG" >> "$GITHUB_ENV"
       - name: Package plugin + MCP release artifacts
         shell: bash
         run: |
@@ -280,6 +295,6 @@ jobs:
               echo "==> $NAME@$VERSION already published, skipping"
               continue
             fi
-            echo "==> npm publish $NAME@$VERSION"
-            (cd "$RUNNER_TEMP/npm/$pkg" && npm publish --access public --provenance)
+            echo "==> npm publish $NAME@$VERSION (dist-tag: $NPM_TAG)"
+            (cd "$RUNNER_TEMP/npm/$pkg" && npm publish --access public --provenance --tag "$NPM_TAG")
           done
