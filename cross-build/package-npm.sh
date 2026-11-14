@@ -64,19 +64,21 @@ EOF
 	cat > "$dir/README.md" <<EOF
 # ${name}
 
-oak-mcp ${VERSION}（Quercus 引擎的 MCP 服务器）— ${desc}。
+oak-mcp ${VERSION} — ${desc}.
 
-本包由 \`@oakvideoeditor/oak-deepseek-plugin\` 作为 optionalDependency 安装，
-其 Host 半会把二进制复制到用户目录后启动 MCP。独立使用时：\`bin/oak-mcp --check\`。
+This package is installed as an optionalDependency of
+\`@oakvideoeditor/oak-deepseek-plugin\`. On first activation the plugin's host half copies the
+binary into the user directory and starts the MCP server. To use it standalone, run
+\`bin/oak-mcp --check\`.
 
-License: GPL-3.0-or-later。
+License: GPL-3.0-or-later.
 EOF
 }
 
 # ---- darwin arm64 ----
 if [ -n "$MACOS_BIN" ]; then
 	D="$OUT/oak-mcp-darwin-arm64"
-	platform_pkg "$D" "@oakvideoeditor/oak-mcp-darwin-arm64" darwin arm64 "macOS arm64 binary"
+	platform_pkg "$D" "@oakvideoeditor/oak-mcp-darwin-arm64" darwin arm64 "MCP server binary for the Quercus video-editing engine (macOS arm64)"
 	cp -a "$MACOS_BIN" "$D/bin/oak-mcp"; chmod +x "$D/bin/oak-mcp"
 	if [ -n "$MACOS_LIBS" ] && [ -d "$MACOS_LIBS" ]; then
 		mkdir -p "$D/lib"; cp -RL "$MACOS_LIBS/." "$D/lib/" 2>/dev/null || true
@@ -86,7 +88,7 @@ fi
 # ---- linux x64 ----
 if [ -n "$LINUX_BIN" ]; then
 	D="$OUT/oak-mcp-linux-x64"
-	platform_pkg "$D" "@oakvideoeditor/oak-mcp-linux-x64" linux x64 "Linux x86_64 binary"
+	platform_pkg "$D" "@oakvideoeditor/oak-mcp-linux-x64" linux x64 "MCP server binary for the Quercus video-editing engine (Linux x86_64)"
 	cp -a "$LINUX_BIN" "$D/bin/oak-mcp"; chmod +x "$D/bin/oak-mcp"
 	if [ -n "$LINUX_LIBS" ] && [ -d "$LINUX_LIBS" ]; then
 		mkdir -p "$D/lib"; cp -a "$LINUX_LIBS/." "$D/lib/"
@@ -96,7 +98,7 @@ fi
 # ---- win32 x64 ----
 if [ -n "$WINDOWS_BIN" ]; then
 	D="$OUT/oak-mcp-win32-x64"
-	platform_pkg "$D" "@oakvideoeditor/oak-mcp-win32-x64" win32 x64 "Windows x86_64 binary"
+	platform_pkg "$D" "@oakvideoeditor/oak-mcp-win32-x64" win32 x64 "MCP server binary for the Quercus video-editing engine (Windows x86_64)"
 	cp -a "$WINDOWS_BIN" "$D/bin/oak-mcp.exe"
 	if [ -n "$WINDOWS_DLLS" ] && [ -d "$WINDOWS_DLLS" ]; then
 		cp -a "$WINDOWS_DLLS/." "$D/bin/"
@@ -147,7 +149,7 @@ EOF
 cat > "$D/README.md" <<'README_EOF'
 # @oakvideoeditor/oak-mcp
 
-Quercus 非线性剪辑引擎的 MCP 服务器（stdio）。npx 直接运行：
+MCP server (stdio) for the Quercus non-linear video-editing engine. Run it directly with npx:
 
 ```json
 {
@@ -157,9 +159,10 @@ Quercus 非线性剪辑引擎的 MCP 服务器（stdio）。npx 直接运行：
 }
 ```
 
-本包按平台安装 `@oakvideoeditor/oak-mcp-*` 二进制包并 exec。CLI：`oak-mcp --check`。
+This package installs the platform-specific `@oakvideoeditor/oak-mcp-*` binary package and
+execs it. CLI: `oak-mcp --check`.
 
-License: GPL-3.0-or-later。
+License: GPL-3.0-or-later.
 README_EOF
 
 echo "==> npm packages assembled in $OUT"

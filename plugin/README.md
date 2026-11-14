@@ -1,38 +1,43 @@
 # @oakvideoeditor/oak-deepseek-plugin
 
-[DeepSeek Harness](https://deepseek-harness.github.io/deepseek-harness/) 视频剪辑插件：
-接入 [oak MCP](https://github.com/OakVideoEditorCommunity/example-mcp)（Quercus 非线性剪辑引擎），
-让助手用 `mcp__oak__*` 工具剪辑视频，并在 GUI 左侧栏「视频预览」面板播放成片。
+A [DeepSeek Harness](https://deepseek-harness.github.io/deepseek-harness/) video-editing plugin:
+it connects to the [oak MCP](https://github.com/OakVideoEditorCommunity/example-mcp) server
+(backed by the Quercus non-linear video-editing engine), lets the assistant edit video with the
+`mcp__oak__*` tools, and plays exported cuts in the **Video Preview** panel in the GUI sidebar.
 
-## 安装
+## Install
 
 ```bash
 dsh plugin --profile desktop add @oakvideoeditor/oak-deepseek-plugin
-# 重启 DeepSeek Harness
+# Restart DeepSeek Harness
 ```
 
-本包通过 `optionalDependencies` 自动安装当前平台的 MCP 二进制包
-（`@oakvideoeditor/oak-deepseek-plugin-darwin-arm64` / `-linux-x64` / `-win32-x64`），
-首次激活时由 Host 半自动复制到：
+Through `optionalDependencies`, the plugin automatically installs the MCP binary package for the
+current platform (`@oakvideoeditor/oak-mcp-darwin-arm64` / `-linux-x64` / `-win32-x64`).
+On first activation the host half copies it to:
 
-- Windows：`%LOCALAPPDATA%\video-studio`
-- Linux/macOS：`~/.local/share/video-studio`
+- Windows: `%LOCALAPPDATA%\video-studio`
+- Linux/macOS: `~/.local/share/video-studio`
 
-也可用环境变量 `VIDEO_STUDIO_MCP_BIN` 指定已有的 `oak-mcp` 可执行文件。
+You can also point the plugin at an existing `oak-mcp` executable with the
+`VIDEO_STUDIO_MCP_BIN` environment variable.
 
-MCP 服务器也可单独从 npm 安装：`npx -y @oakvideoeditor/oak-mcp`（任意 MCP 客户端可用）。
+The MCP server can also be installed from npm on its own:
+`npx -y @oakvideoeditor/oak-mcp` (usable with any MCP client).
 
-## 使用
+## Usage
 
-重启后左侧栏出现胶片图标「视频预览」，模型工具列表出现 `mcp__oak__*`（50 个）。
-让助手剪辑并导出，成片写入 `~/.dsh/video-studio/previews` 后面板自动出现并可播放。
+After restarting, a film icon named **Video Preview** appears in the left sidebar, and 50
+`mcp__oak__*` tools appear in the model's tool list. Ask the assistant to edit and export; the
+finished video is written to `~/.dsh/video-studio/previews` and shows up in the panel, ready to
+play.
 
-## 平台
+## Platforms
 
-- Windows x86_64（Win10 1809+）
+- Windows x86_64 (Win10 1809+)
 - Linux x86_64
-- macOS arm64（Apple Silicon）
+- macOS arm64 (Apple Silicon)
 
-## 许可
+## License
 
-GPL-3.0-or-later。`oak-mcp` 二进制由 GPL-3.0-or-later 的 example-mcp 构建。
+GPL-3.0-or-later. The `oak-mcp` binary is built from the GPL-3.0-or-later licensed example-mcp.
